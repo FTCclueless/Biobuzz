@@ -23,6 +23,13 @@ android {
     }
 }
 
+repositories {
+    maven {
+        url = "https://repo.dairy.foundation/releases"
+    }
+}
+
 dependencies {
     implementation project(':FtcRobotController')
+    implementation("com.acmerobotics.slothboard:dashboard:0.2.4+0.5.1")
 }
