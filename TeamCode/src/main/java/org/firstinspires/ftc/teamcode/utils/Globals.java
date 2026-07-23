@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.utils;
 
 import com.acmerobotics.dashboard.config.Config;
+import com.pedropathing.math.Pose;
 
 import java.util.ArrayList;
 
@@ -11,7 +12,6 @@ public class Globals {
     public static double LOOP_TIME = 0.0;
     public static boolean isRed = true;
 
-
     // drivetrain
     public static boolean DRIVETRAIN_ENABLED = true;
     public static double TRACK_WIDTH = 11.27;
@@ -19,21 +19,16 @@ public class Globals {
     public static double ROBOT_LENGTH = 18.0;
     public static double ROBOT_BACK_LENGTH = 6.2;
     public static double ROBOT_FORWARD_LENGTH = 7.4;
-    public static Pose2d ROBOT_POSITION = new Pose2d(0,0,0);
-    public static Pose2d ROBOT_VELOCITY = new Pose2d(0,0,0);
-    public static Pose2d ROBOT_GLOBAL_VELOCITY = new Pose2d(0,0,0);
-    public static Pose2d ROBOT_GLOBAL_ACCELERATION = new Pose2d(0,0,0);
-    public static Pose2d AUTO_ENDING_POSE = new Pose2d(0,0,0);
+    public static Pose ROBOT_POSITION = new Pose(0,0,0);
+    public static Pose ROBOT_VELOCITY = new Pose(0,0,0);
+    public static Pose ROBOT_GLOBAL_VELOCITY = new Pose(0,0,0);
+    public static Pose ROBOT_GLOBAL_ACCELERATION = new Pose(0,0,0);
+    public static Pose AUTO_ENDING_POSE = new Pose(0,0,0);
 
     // loop time methods
     public static void START_LOOP() {
         LOOP_START = System.nanoTime();
     }
-
-    // DECODE
-    public static Pose2d redTag = new Pose2d(-58.3414795, 55.6424675);
-    public static Pose2d blueTag = new Pose2d(-58.3414795, -55.6424675);
-    public static double tagHeight = 29.5;
 
     public static double GET_LOOP_TIME() {
         LOOP_TIME = (System.nanoTime() - LOOP_START) / 1.0e9; // converts from nano secs to secs
