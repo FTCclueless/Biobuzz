@@ -8,6 +8,10 @@ configurations.configureEach {
     resolutionStrategy.cacheChangingModulesFor 5, 'minutes'
 }
 
+configurations.all {
+    exclude group: 'org.aspectj', module: 'aspectjtools'
+}
+
 dependencies {
     implementation 'org.firstinspires.ftc:Inspection:11.2.0'
     implementation 'org.firstinspires.ftc:Blocks:11.2.0'
