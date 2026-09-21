@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.sensors;
 import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_POSITION;
 import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_VELOCITY;
 import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_GLOBAL_VELOCITY;
+import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_GLOBAL_ACCELERATION;
 
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
@@ -110,6 +111,7 @@ public class Sensors {
         ROBOT_POSITION = robot.drivetrain.nMergeLocalizer.getPoseEstimate();
         ROBOT_VELOCITY = robot.drivetrain.nMergeLocalizer.getRelativePoseVelocity();
         ROBOT_GLOBAL_VELOCITY = robot.drivetrain.nMergeLocalizer.getGlobalVelocity();
+        ROBOT_GLOBAL_ACCELERATION = robot.drivetrain.nMergeLocalizer.getGlobalAccel();
 
         //if (currentTime - initialTime < 500_000_000) resetTurretAngleEncoder = true;
         if (currentTime - lastTurretSensorUpdatedTime > turretSensorUpdateTime * 1e6) {

@@ -15,26 +15,6 @@ public class Flywheel {
     private final Robot robot;
     public final PriorityMotor flywheel;
 
-    /*
-    Vel - FF - Tuned 2/25/26
-    0.09 - 40
-    0.15 - 87
-    0.22 - 175
-    0.28 - 222
-    0.33 - 276
-    0.39 - 329
-    0.47 - 417
-    0.55 - 491
-    0.64 - 565
-    0.69 - 606
-    0.74 - 670
-    0.82 - 706
-    0.91 - 767
-    0.96 - 807
-    1 - 848
-     */
-
-    // velocity is in inches / second
     public static PID velocityPID = new PID (0.03, 0.0003, 0.0001);
     public static double velocityFFm = 0.00124059 * 20 / 16;
     public static double velocityFFb = 0.0264087;
@@ -63,7 +43,6 @@ public class Flywheel {
     }
 
     public void update() {
-        // Flywheel Velocity PIDF
         double actualVelocity = robot.sensors.getFlywheelVelocity();
         if (Math.abs(actualVelocity - filteredVelocity) <= velocityFilterThresh) {
             filteredVelocity = filteredVelocity * (1 - velocityFilterLow) + actualVelocity * velocityFilterLow;
@@ -72,7 +51,7 @@ public class Flywheel {
         }
         double error = targetVelocity - filteredVelocity;
         if (targetVelocity <= 1 || error > velocityFilterThresh) velocityPID.resetIntegral();
-        else velocityPID.clipIntegral(-1, 1);
+        else velocityPID.clipIntegralOutput(-1, 1);
 
         double pidpow = velocityPID.update(error, -1.0, 1.0);
         double ffpow = targetVelocity * velocityFFm + velocityFFb;

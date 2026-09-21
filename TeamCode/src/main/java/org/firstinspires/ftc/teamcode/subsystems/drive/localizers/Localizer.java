@@ -20,7 +20,6 @@ public class Localizer {
     protected Sensors sensors;
     protected Drivetrain drivetrain;
 
-
     public Encoder[] encoders;
     protected long lastTime = System.nanoTime();
 
@@ -61,18 +60,17 @@ public class Localizer {
 
         encoders = new Encoder[3];
 
-        // 1 / (ticks / mm * mm / in)
         double ticksToInches = 1.0 / (2000.0 / 32.0 / Math.PI * 25.4);
-        double leftPodOffset = 3.391 ; //* (62.385 / (20 * Math.PI)) * (62.691 / (20 * Math.PI)) * (62.7733 / (20 * Math.PI)); // 74 / 25.4
-        double rightPodOffset = 3.42; //* (62.385 / (20 * Math.PI)) * (62.691 / (20 * Math.PI)) * (62.7733 / (20 * Math.PI)); // 74 / 25.4
-        encoders[0] = new Encoder(new Pose2d(0, leftPodOffset),  -1, ticksToInches); // left
-        encoders[1] = new Encoder(new Pose2d(0, -rightPodOffset), 1, ticksToInches); // right
-        encoders[2] = new Encoder(new Pose2d(0.582, 0), -1, ticksToInches); // back
+        double leftPodOffset = 3.391 ;
+        double rightPodOffset = 3.42;
+        encoders[0] = new Encoder(new Pose2d(0, leftPodOffset),  -1, ticksToInches);
+        encoders[1] = new Encoder(new Pose2d(0, -rightPodOffset), 1, ticksToInches);
+        encoders[2] = new Encoder(new Pose2d(0.582, 0), -1, ticksToInches);
 
         relHistory.add(new Pose2d(0,0,0));
         poseHistory.add(new Pose2d(0,0,0));
         relVelHistory.add(new Pose2d(0,0,0));
-        nanoTimes.add(0L);
+        nanoTimes.add(System.nanoTime());
     }
 
     public void updateEncoders(int[] encoders) {
@@ -117,7 +115,6 @@ public class Localizer {
         double loopTime = (double)(currentTime-lastTime)/1.0E9;
         lastTime = currentTime;
 
-        // Odometry
         double deltaLeft = encoders[0].getDelta();
         double deltaRight = encoders[1].getDelta();
         double deltaBack = encoders[2].getDelta();
@@ -125,15 +122,11 @@ public class Localizer {
         double rightY = encoders[1].y;
         double backX = encoders[2].x;
 
-        //This is the heading because the heading is proportional to the difference between the left and right wheel.
         double deltaHeading = (deltaRight - deltaLeft)/(leftY-rightY);
-        //This gives us deltaY because the back minus theta*R is the amount moved to the left minus the amount of movement in the back encoder due to change in heading
         relDeltaY = deltaBack - deltaHeading*backX;
-        //This is a weighted average for the amount moved forward with the weights being how far away the other one is from the center
         relDeltaX = (deltaRight*leftY - deltaLeft*rightY)/(leftY-rightY);
         distanceTraveled += Math.sqrt(relDeltaX*relDeltaX+relDeltaY*relDeltaY);
 
-        // constant accel
         Pose2d relDelta = new Pose2d(relDeltaX,relDeltaY,deltaHeading);
         constAccelMath.calculate(loopTime,relDelta,currentPose);
 
@@ -193,7 +186,7 @@ public class Localizer {
             p[i] = Math.max(Math.min(p[i],1),-1);
         }
         double forward = (p[0] + p[1] + p[2] + p[3]) / 4;
-        double left = (-p[0] + p[1] - p[2] + p[3]) / 4; //left power is less than 1 of forward power
+        double left = (-p[0] + p[1] - p[2] + p[3]) / 4;
         double turn = (-p[0] - p[1] + p[2] + p[3]) / 4;
         currentPowerVector.x = forward * Math.cos(heading) - left * Math.sin(heading);
         currentPowerVector.y = left * Math.cos(heading) + forward * Math.sin(heading);
@@ -217,10 +210,14 @@ public class Localizer {
                 velCalcLastIndex = i;
             }
         }
-        if (actualVelTime == 0) return new Pose2d(0, 0, 0);
+        double distanceTime = actualVelTime;
+        if (velCalcLastIndex + 1 < nanoTimes.size()) {
+            distanceTime = (double) (nanoTimes.get(0) - nanoTimes.get(velCalcLastIndex + 1)) / 1.0E9;
+        }
+        if (actualVelTime == 0 || distanceTime <= 0) return new Pose2d(0, 0, 0);
         return new Pose2d(
-            (relDeltaXTotal) / actualVelTime,
-            (relDeltaYTotal) / actualVelTime,
+            (relDeltaXTotal) / distanceTime,
+            (relDeltaYTotal) / distanceTime,
             Utils.headingClip(poseHistory.get(0).getHeading() - poseHistory.get(velCalcLastIndex).getHeading()) / actualVelTime
         );
     }
@@ -248,17 +245,18 @@ public class Localizer {
                 accelCalcLastIndex = i;
             }
         }
-        if (actualAccelTime == 0) return new Pose2d(0, 0, 0);
+        double accelSpan = actualAccelTime;
+        if (accelCalcLastIndex + 1 < nanoTimes.size()) {
+            accelSpan = (double) (nanoTimes.get(0) - nanoTimes.get(accelCalcLastIndex + 1)) / 1.0E9;
+        }
+        if (actualAccelTime == 0 || accelSpan <= 0) return new Pose2d(0, 0, 0);
         return new Pose2d(
-            (relDeltaVelXTotal) / actualAccelTime,
-            (relDeltaVelYTotal) / actualAccelTime
+            (relDeltaVelXTotal) / accelSpan,
+            (relDeltaVelYTotal) / accelSpan
         );
     }
 
-
     public void updateVelocity() {
-        Log.i("updateVelocity", "nanoTimes " + nanoTimes.size());
-        Log.i("updateVelocity", "relHistory " + relHistory.size());
         relCurrentVel = calcVel(relHistory);
         currentVel = new Pose2d(
             relCurrentVel.x * Math.cos(heading) - relCurrentVel.y * Math.sin(heading),
@@ -268,7 +266,6 @@ public class Localizer {
 
         relVelHistory.add(0, relCurrentVel.clone());
 
-        Log.i("updateVelocity", "relVelHistory " + relVelHistory.size());
         relCurrentAccel = calcAccel(relVelHistory);
         currentAccel = new Pose2d(
             relCurrentAccel.x * Math.cos(heading) - relCurrentAccel.y * Math.sin(heading),
@@ -327,6 +324,6 @@ public class Localizer {
         TelemetryUtil.packet.put(this.getClass().getSimpleName()+" distance", distanceTraveled);
 
         Canvas fieldOverlay = TelemetryUtil.packet.fieldOverlay();
-        DashboardUtil.drawRobot(fieldOverlay, getPoseEstimate(), color); // red
+        DashboardUtil.drawRobot(fieldOverlay, getPoseEstimate(), color);
     }
 }

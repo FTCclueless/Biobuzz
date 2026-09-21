@@ -21,9 +21,23 @@ android {
     packagingOptions {
         jniLibs.useLegacyPackaging true
     }
+
+    // Off-robot unit tests: control/ and drive/pathing/ are pure Java, so they run in a plain JVM.
+    testOptions {
+        unitTests.returnDefaultValues = true
+        unitTests.all {
+            testLogging {
+                events "passed", "failed", "skipped"
+                showStandardStreams = true
+                exceptionFormat = "full"
+            }
+        }
+    }
 }
 
 dependencies {
     implementation project(':FtcRobotController')
     implementation 'com.google.ar:core:1.25.0'
+
+    testImplementation 'junit:junit:4.13.2'
 }

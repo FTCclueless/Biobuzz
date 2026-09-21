@@ -29,9 +29,44 @@ public class Vector2 {
     public void mul(double a) {
         x *= a;
         y *= a;
-        magcache *= a;
+        magcache *= Math.abs(a);
     }
 
+    public Vector2 plus(Vector2 a) { return new Vector2(x + a.x, y + a.y); }
+
+    public Vector2 minus(Vector2 a) { return new Vector2(x - a.x, y - a.y); }
+
+    public Vector2 times(double k) { return new Vector2(x * k, y * k); }
+
+    public Vector2 div(double k) { return new Vector2(x / k, y / k); }
+
+    public double dot(Vector2 a) { return x * a.x + y * a.y; }
+
+    public double cross(Vector2 a) { return x * a.y - y * a.x; }
+
+    public double mag2() { return x * x + y * y; }
+
+    public Vector2 unit() {
+        double m = Math.hypot(x, y);
+        return m < 1e-12 ? new Vector2(0, 0) : new Vector2(x / m, y / m);
+    }
+
+    public Vector2 rotated(double rad) {
+        double c = Math.cos(rad), s = Math.sin(rad);
+        return new Vector2(x * c - y * s, x * s + y * c);
+    }
+
+    public Vector2 leftNormal() { return new Vector2(-y, x); }
+
+    public boolean isFinite() {
+        return !Double.isNaN(x) && !Double.isNaN(y)
+                && !Double.isInfinite(x) && !Double.isInfinite(y);
+    }
+
+    public static double distanceSquared(Vector2 a, Vector2 b) {
+        double dx = a.x - b.x, dy = a.y - b.y;
+        return dx * dx + dy * dy;
+    }
 
     public static double dot(Vector2 a,Vector2 b) {
         return (a.x*b.x + a.y*b.y);
@@ -69,27 +104,6 @@ public class Vector2 {
         return String.format("(%f, %f)", x, y);
     }
 
-    public static Vector2 rotate(Vector2 vector, double angle) {
-        double x = vector.x;
-        double y = vector.y;
-        x = x*Math.cos(angle) + y*Math.sin(angle);
-        y = x*-Math.sin(angle) + y*Math.cos(angle);
-        return new Vector2(x, y);
-    }
-    public void rotateAround(double angle, double x, double y) {
-        this.x -= x;
-        this.y -= y;
-        rotate(angle); //idk if is scuffed or not lmao -Kyle
-        this.x +=x;
-        this.y +=y;
-    }
-    public static Vector2 rotateAround(Vector2 vector, double angle, double x, double y) {
-        double vx = vector.x-x;
-        double vy = vector.y-y;
-        Vector2 temp = Vector2.rotate(new Vector2(vx,vy), angle);
-        return new Vector2(temp.x+x, temp.y+y);
-    }
-
     public static Vector2 subtract(Vector2 a, Vector2 b) {
         return new Vector2(a.x - b.x, a.y - b.y);
     }
@@ -104,12 +118,5 @@ public class Vector2 {
 
         x = nx;
         y = ny;
-    }
-
-    public static Vector2 staticrotate(Vector2 v, double rad) {
-        return new Vector2(
-            v.x * Math.cos(rad) - v.y * Math.sin(rad),
-            v.x * Math.sin(rad) + v.y * Math.cos(rad)
-        );
     }
 }

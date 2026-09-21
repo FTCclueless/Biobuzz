@@ -9,7 +9,7 @@ import org.firstinspires.ftc.teamcode.utils.Utils;
 public class PriorityMotor extends PriorityDevice {
     double lastPower = 0;
     public double power = 0;
-    public DcMotorEx[] motor; // if the subsystem has multiple motors (i.e. slides)
+    public DcMotorEx[] motor;
     private double[] multipier;
 
     Sensors sensors;
@@ -36,6 +36,7 @@ public class PriorityMotor extends PriorityDevice {
         minPowerToOvercomeKineticFriction = 0.0;
         lastZeroTime = System.currentTimeMillis();
         callLengthMillis = 1.6;
+        this.actuatorCount = motor.length;
         this.multipier = multiplier;
     }
 
@@ -57,7 +58,6 @@ public class PriorityMotor extends PriorityDevice {
         this.power = power + m * Math.signum(power);
     }
 
-    //double k = 0.7; // 0.5
     public void setTargetPowerSmooth(double power, double k) {
         if (lastPower == 0){
             lastZeroTime = System.currentTimeMillis();
@@ -97,22 +97,30 @@ public class PriorityMotor extends PriorityDevice {
     }
 
     @Override
+    protected double commandedValue() { return power; }
+
+    @Override
+    protected boolean hasPendingWrite() { return power != lastPower; }
+
+    @Override
+    protected double error() { return Math.abs(power - lastPower); }
+
+    @Override
     protected double getPriority(double timeRemaining) {
-        if (power-lastPower == 0) {
+        if (!hasPendingWrite()) {
             lastUpdateTime = System.nanoTime();
             return 0;
         }
 
-        if (timeRemaining * 1000.0 <= callLengthMillis * (motor.length-1) + callLengthMillis/2.0) {
+        if (timeRemaining * 1000.0 <= costMillis()) {
             return 0;
         }
 
-        return basePriority + priorityScale * (System.nanoTime() - lastUpdateTime)/1.0E6 * Math.abs(power-lastPower);
+        return rank();
     }
 
     @Override
     protected void update() {
-
         for (int i = 0; i < motor.length; i ++) {
             motor[i].setPower(power * multipier[i]);
         }

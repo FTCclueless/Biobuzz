@@ -22,6 +22,10 @@ public class Pose2d implements Cloneable {
         this.heading = heading;
     }
 
+    public Pose2d(Vector2 pos, double heading) {
+        this(pos.x, pos.y, heading);
+    }
+
     public void add(Pose2d p1) {
         this.x += p1.x;
         this.y += p1.y;
@@ -60,15 +64,15 @@ public class Pose2d implements Cloneable {
         return heading;
     }
 
-    public double getDistanceFromPoint(Pose2d newPoint) { // distance equation
+    public double getDistanceFromPoint(Pose2d newPoint) {
         return Math.sqrt(Math.pow((x - newPoint.x),2) + Math.pow((y - newPoint.y),2));
     }
 
-    public double getErrorInX(Pose2d newPoint) { // distance equation
+    public double getErrorInX(Pose2d newPoint) {
         return Math.abs(x - newPoint.x);
     }
 
-    public double getErrorInY(Pose2d newPoint) { // distance equation
+    public double getErrorInY(Pose2d newPoint) {
         return Math.abs(y - newPoint.y);
     }
 
@@ -83,6 +87,12 @@ public class Pose2d implements Cloneable {
     public double mag() { return Math.sqrt(x * x + y * y); }
 
     public Vector2 toVec2() {return new Vector2(x, y); }
+
+    public Vector2 toBody(Vector2 field) { return field.rotated(-heading); }
+
+    public Vector2 toField(Vector2 body) { return body.rotated(heading); }
+
+    public double headingErrorTo(double target) { return Utils.headingClip(target - heading); }
 
     public static Pose2d from3D(Pose3D p) {
         return new Pose2d(p.getPosition().x, p.getPosition().y, p.getOrientation().getYaw(AngleUnit.RADIANS));

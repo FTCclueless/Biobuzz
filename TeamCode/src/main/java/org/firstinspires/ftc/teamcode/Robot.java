@@ -6,6 +6,7 @@ import static org.firstinspires.ftc.teamcode.utils.Globals.START_LOOP;
 import android.util.Log;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import org.firstinspires.ftc.teamcode.photon.PhotonCore;
 
 import com.acmerobotics.dashboard.canvas.Canvas;
 
@@ -41,6 +42,8 @@ public class Robot {
     public Robot(HardwareMap hardwareMap) { this(hardwareMap, false); }
 
     public Robot(HardwareMap hardwareMap, boolean useVision) {
+        PhotonCore.enable();
+
         this.hardwareMap = hardwareMap;
         hardwareQueue = new HardwareQueue();
 
@@ -74,26 +77,14 @@ public class Robot {
         this.updateTelemetry();
     }
 
-    /**
-     * Sets the condition that should stop waiting (waitWhile)
-     * @param func the function to check (return true to stop)
-     */
     public void setStopChecker(BooleanSupplier func) { this.stopChecker = func; }
 
-    /**
-     * Waits while a condition is true
-     * @param func the function to check
-     */
     public void waitWhile(BooleanSupplier func) {
         do {
             update();
         } while (!this.stopChecker.getAsBoolean() && func.getAsBoolean());
     }
 
-    /**
-     * Waits while a condition is true
-     * @param func the function to check
-     */
     public void waitWhileWithTimeout(BooleanSupplier func, long duration) {
         long start = System.currentTimeMillis();
         do {
@@ -101,10 +92,6 @@ public class Robot {
         } while (!this.stopChecker.getAsBoolean() && System.currentTimeMillis() - start < duration && func.getAsBoolean());
     }
 
-    /**
-     * Waits for a duration
-     * @param duration the duration in milliseconds
-     */
     public void waitFor(long duration) {
         long start = System.currentTimeMillis();
         do {
@@ -117,6 +104,7 @@ public class Robot {
         for (Consumer<Canvas> task : canvasDrawTasks) task.accept(canvas);
 
         TelemetryUtil.packet.put("Loop Time", GET_LOOP_TIME());
+        TelemetryUtil.packet.put("Photon Enabled", PhotonCore.isEnabled().get());
 
         TelemetryUtil.sendTelemetry();
         LogUtil.send();

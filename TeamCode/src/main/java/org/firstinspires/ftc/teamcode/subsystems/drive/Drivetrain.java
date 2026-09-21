@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.subsystems.drive;
 
 import static org.firstinspires.ftc.teamcode.utils.Globals.DRIVETRAIN_ENABLED;
 import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_POSITION;
-import static org.firstinspires.ftc.teamcode.utils.Globals.TRACK_WIDTH;
 
 import android.util.Log;
 
@@ -28,6 +27,9 @@ import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
 import org.firstinspires.ftc.teamcode.utils.Vector2;
 import org.firstinspires.ftc.teamcode.utils.priority.HardwareQueue;
 import org.firstinspires.ftc.teamcode.utils.priority.PriorityMotor;
+import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.MecanumKinematics;
+import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.PathFollower;
+import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.Trajectory;
 import org.firstinspires.ftc.teamcode.vision.Vision;
 
 import java.util.Arrays;
@@ -37,14 +39,19 @@ import java.util.Locale;
 @Config
 public class Drivetrain {
     public enum State {
-        FOLLOW_SPLINE,
         PID_TO_POINT,
         BRAKE,
         WAIT,
         DRIVE,
+        FOLLOW_TRAJECTORY,
         IDLE
     }
     public State state = State.IDLE;
+
+    private PathFollower trajectoryFollower;
+    private MecanumKinematics kinematics;
+    private Pose2d trajectoryEndPose;
+    private double[][] trajectoryDrawPoints;
 
     public PriorityMotor leftFront, leftRear, rightRear, rightFront;
     private final List<PriorityMotor> motors;
@@ -55,8 +62,6 @@ public class Drivetrain {
     private final HardwareQueue hardwareQueue;
     private final Sensors sensors;
 
-    //teleop heading lock stuff
-    //tune
     public static double targetHeading = 135;
     public static double headingLockDeadzone = 2.5;
     private boolean wasLocking = false;
@@ -91,12 +96,15 @@ public class Drivetrain {
 
         motors = Arrays.asList(leftFront, leftRear, rightRear, rightFront);
 
+        for (PriorityMotor motor : motors) {
+            motor.setCritical(true).setMaxStaleness(0.10);
+        }
+
         configureMotors();
         setMinPowersToOvercomeFriction(1.0);
 
         localizer = new Localizer (sensors, this, "#ff0000", "#ffffff");
         nMergeLocalizer = new nMergeLocalizer (hardwareMap, sensors, this, "#0000ff", "#ff00ff");
-        //if (vision != null) vision.start();
     }
 
     public void configureMotors() {
@@ -128,7 +136,6 @@ public class Drivetrain {
         }
     }
 
-    // leftFront, leftRear, rightRear, rightFront
     double[] minPowersToOvercomeFriction = {
         0.3, 0.3, 0.3, 0.3
     };
@@ -165,16 +172,6 @@ public class Drivetrain {
         return ROBOT_POSITION;
     }
 
-    private Path path = null;
-    long segmentStartTime;
-    int lastSegmentIndex;
-    public PathData data;
-    private Vector2 moveVector = new Vector2(0, 0);
-    private double turnPow = 0, lastGVFTime = 0.0;
-
-    // TODO: Tune these values
-    public static double correctScalar = 5.5, rotScalar = 1.15, decelThresh = 36.0;
-
     private Pose2d targetPoint = new Pose2d (0, 0, 0);
     public static PID xPID = new PID (0.2, 0.0, 0.007);
     public static PID yPID = new PID (0.2, 0.0, 0.007);
@@ -189,60 +186,7 @@ public class Drivetrain {
             return;
         }
 
-        if (path != null) {
-            state = State.FOLLOW_SPLINE;
-        }
-
         switch (state) {
-            case FOLLOW_SPLINE:
-                data = path.update(ROBOT_POSITION);
-
-                // Null data indicates the end of path has been reached
-                if (data == null) {
-                    targetPoint = path.getLastPose();
-                    maxPower = 0.8;
-                    lastGVFTime = System.currentTimeMillis();
-                    path = null;
-                    state = State.PID_TO_POINT;
-                    break;
-                }
-
-                // Timeout / stuck protection (looks good? will check more in depth. consider switching to PID to point rather than moving the path ahead since the splines will be starting at weird points now
-                if (data.index != lastSegmentIndex) {
-                    lastSegmentIndex = data.index;
-                    segmentStartTime = System.currentTimeMillis();
-                } else if (System.currentTimeMillis() - segmentStartTime > 5000) {
-                    Log.i("Drivetrain", "Segment " + data.index + " timed out. Skipping to next index");
-                    path.setIndex(data.index + 1);
-                    segmentStartTime = System.currentTimeMillis();
-                    lastSegmentIndex = data.index + 1;
-                }
-
-                Vector2 traverse = new Vector2(data.velocity.x, data.velocity.y);
-                Vector2 correct = new Vector2(0, traverse.mag() * traverse.mag() / data.radius * correctScalar);
-                correct.rotate(Math.atan2(traverse.y, traverse.x));
-
-                // Only scale the traverse part of moveVector bc correction should remain true to curr velocity
-                if (data.decel && ROBOT_POSITION.getDistanceFromPoint(path.getSegLast(data.index)) < decelThresh) {
-                    traverse.mul(Math.pow(Math.E, (ROBOT_POSITION.getDistanceFromPoint(path.getSegLast(data.index)) * 0.25)));
-                }
-
-                moveVector = Vector2.add(traverse, correct);
-                moveVector.rotate(-ROBOT_POSITION.heading);
-                double mag = moveVector.mag();
-                moveVector.norm();
-
-                double pathRot = 0;
-                if (Math.abs(data.radius) < Spline.MAX_RADIUS) {
-                    pathRot = traverse.mag() / mag * (TRACK_WIDTH) / (2.0 * data.radius) * (data.reversed ? -1 : 1);
-                }
-
-                double targetHeading = Math.atan2(traverse.y, traverse.x) + (data.reversed ? Math.PI : 0);
-                turnPow = pathRot * rotScalar + hPID.update(targetHeading - ROBOT_POSITION.heading, -1.0, 1.0);
-
-                moveVector.mul(data.power);
-                setMoveVector(moveVector, turnPow);
-                break;
             case PID_TO_POINT:
                 calculateErrors();
                 PIDF();
@@ -263,6 +207,26 @@ public class Drivetrain {
                     state = State.PID_TO_POINT;
                 }
                 break;
+            case FOLLOW_TRAJECTORY:
+                PathFollower.Command cmd =
+                        trajectoryFollower.update(ROBOT_POSITION, sensors.loopTime);
+
+                setMotorPowers(cmd.powers[0], cmd.powers[2], cmd.powers[3], cmd.powers[1]);
+
+                TelemetryUtil.packet.put("Path : s", cmd.s);
+                TelemetryUtil.packet.put("Path : contour error", cmd.contourError);
+                TelemetryUtil.packet.put("Path : lag error", cmd.lagError);
+                TelemetryUtil.packet.put("Path : saturation", cmd.saturation);
+
+                if (trajectoryFollower.isFinished() || trajectoryFollower.hasFaulted()) {
+                    if (trajectoryFollower.hasFaulted()) {
+                        Log.e("Drivetrain", "path follower fault: " + trajectoryFollower.fault());
+                    }
+                    stopAllMotors();
+                    if (trajectoryEndPose != null) this.targetPoint = trajectoryEndPose;
+                    state = State.WAIT;
+                }
+                break;
             case DRIVE:
                 break;
             case IDLE:
@@ -272,24 +236,15 @@ public class Drivetrain {
         updateTelemetry();
     }
 
-    public void setPath (Path p) {
-        this.path = p;
-        segmentStartTime = System.currentTimeMillis();
-        lastSegmentIndex = 0;
-    }
-
-    public Pose2d getCurrentPathTarget() { return path.getSegLast(lastSegmentIndex); }
-
     private void calculateErrors() {
         double deltaX = (targetPoint.x - ROBOT_POSITION.x);
         double deltaY = (targetPoint.y - ROBOT_POSITION.y);
 
-        // convert error into direction robot is facing
         xError = Math.cos(ROBOT_POSITION.heading)*deltaX + Math.sin(ROBOT_POSITION.heading)*deltaY;
         yError = -Math.sin(ROBOT_POSITION.heading)*deltaX + Math.cos(ROBOT_POSITION.heading)*deltaY;
         hError = AngleUtil.clipAngle(targetPoint.heading - ROBOT_POSITION.heading);
     }
-    
+
     double fwd, strafe, h;
 
     private void PIDF() {
@@ -301,9 +256,7 @@ public class Drivetrain {
 
         setMinPowersToOvercomeFriction(1.0);
 
-        double k = Math.exp(-(System.currentTimeMillis() - lastGVFTime));
-        Vector2 move = new Vector2(fwd + moveVector.x * k, strafe + moveVector.y * k);
-        setMoveVector(move, h + turnPow * k);
+        setMoveVector(new Vector2(fwd, strafe), h);
     }
 
     private boolean atPoint() {
@@ -313,6 +266,30 @@ public class Drivetrain {
 
     private double maxPower = 1.0;
     private boolean isWaypoint = false;
+    public static double KIN_TRACK_WIDTH = 14.0, KIN_WHEEL_BASE = 13.0, MAX_WHEEL_SPEED = 66.0;
+
+    public static double PATH_CONTOUR_GAIN = 3.2, PATH_LAG_GAIN = 0.9;
+    public static double PATH_HEADING_GAIN = 4.0, PATH_ACCEL_LEAD = 0.03;
+
+    public void followTrajectory(Trajectory trajectory) {
+        if (kinematics == null) {
+            kinematics = new MecanumKinematics(KIN_TRACK_WIDTH, KIN_WHEEL_BASE, MAX_WHEEL_SPEED);
+        }
+        trajectoryEndPose = trajectory.poseAt(trajectory.length());
+        this.isWaypoint = false;
+
+        trajectory.resetMarkers();
+        trajectoryDrawPoints = DashboardUtil.samplePath(trajectory.path());
+        trajectoryFollower = new PathFollower(trajectory, kinematics)
+                .contourGain(PATH_CONTOUR_GAIN)
+                .lagGain(PATH_LAG_GAIN)
+                .headingGain(PATH_HEADING_GAIN)
+                .accelLead(PATH_ACCEL_LEAD);
+        state = State.FOLLOW_TRAJECTORY;
+    }
+
+    public PathFollower trajectoryFollower() { return trajectoryFollower; }
+
     public void goToPoint(Pose2d targetPoint, double maxPower) { goToPoint(targetPoint, maxPower, false); };
     public void goToPoint(Pose2d targetPoint, double maxPower, boolean isWaypoint) {
         Pose2d lastTargetPoint = this.targetPoint;
@@ -328,19 +305,7 @@ public class Drivetrain {
         }
     }
 
-    //private double lastMoveVectorX = 0;
-    //public static double noWheelieAccelForward = 5, noWheelieDecelForward = 3, noWheelieAccelReverse = 4, noWheelieDecelReverse = 4, wheelieThresh = 1;
     public void setMoveVector(Vector2 moveVector, double turn) {
-        /*
-        double moveVectorXLimited = moveVector.x;
-        if (Math.abs(moveVector.x) > wheelieThresh || Math.abs(lastMoveVectorX) > wheelieThresh) {
-            if ((moveVector.x - lastMoveVectorX) * Math.signum(lastMoveVectorX) > 0)
-                moveVectorXLimited = Utils.minMaxClip(moveVector.x, lastMoveVectorX - noWheelieAccelReverse * sensors.loopTime, lastMoveVectorX + noWheelieAccelForward * sensors.loopTime);
-            else
-                moveVectorXLimited = Utils.minMaxClip(moveVector.x, lastMoveVectorX - noWheelieDecelForward * sensors.loopTime, lastMoveVectorX + noWheelieDecelReverse * sensors.loopTime);
-        }
-        lastMoveVectorX = moveVectorXLimited;
-        */
         double[] powers = {
                 moveVector.x - turn - moveVector.y,
                 moveVector.x - turn + moveVector.y,
@@ -352,7 +317,6 @@ public class Drivetrain {
         setMotorPowers(powers[0], powers[1], powers[2], powers[3]);
 
         TelemetryUtil.packet.put("Drivetrain : moveVector x", moveVector.x);
-        //TelemetryUtil.packet.put("Drivetrain : moveVector x limited", moveVectorXLimited);
         TelemetryUtil.packet.put("Drivetrain : moveVector y", moveVector.y);
         TelemetryUtil.packet.put("Drivetrain : moveVector turn", turn);
     }
@@ -397,7 +361,6 @@ public class Drivetrain {
         double turn;
 
         if (lockHeading) {
-
             if (!wasLocking) {
                 turnPID.resetIntegral();
             }
@@ -425,9 +388,6 @@ public class Drivetrain {
     public void updateTelemetry() {
         TelemetryUtil.packet.put("Drivetrain : state", state);
 
-
-
-//        TelemetryUtil.packet.put("Drivetrain : TargetPoint", "(" + targetPoint.x + ", " + targetPoint.y + ", " + targetPoint.heading + ")");
         TelemetryUtil.packet.put("Drivetrain : PID xError", xError);
         TelemetryUtil.packet.put("Drivetrain : PID yError", yError);
         TelemetryUtil.packet.put("Drivetrain : PID hError", hError);
@@ -439,22 +399,14 @@ public class Drivetrain {
         LogUtil.driveState.set(state.toString());
 
         Canvas canvas = TelemetryUtil.packet.fieldOverlay();
-        if (path != null) {
-            DashboardUtil.drawRobot(canvas, new Pose2d(ROBOT_POSITION.x + sensors.loopTime * data.velocity.x, ROBOT_POSITION.y + sensors.loopTime * data.velocity.y, Math.atan2(data.velocity.y, data.velocity.x)), "#8000ff"); // purple
-            Spline s = path.segments.get(data.index).spline;
-            LogUtil.drivePath.set(s.toString());
+        if (state == State.FOLLOW_TRAJECTORY && trajectoryFollower != null) {
+            Trajectory traj = trajectoryFollower.trajectory();
+            DashboardUtil.drawSampledPath(canvas, trajectoryDrawPoints);
 
-            double n = 100;
-            double step = 1/n;
-            for (double t = 0; t < 1; t = t + step) {
-                canvas.strokeLine(s.getPos(t).x, s.getPos(t).y, s.getPos(t + step).x, s.getPos(t + step).y);
-            }
-
-            for (RepulsionPoint repel : path.repulsion) {
-                canvas.fillCircle(repel.x, repel.y, 0.5);
-            }
+            DashboardUtil.drawRobot(canvas, traj.poseAt(trajectoryFollower.arcLength()), "#8000ff");
+            LogUtil.drivePath.set(traj.path().toString());
         } else {
-            DashboardUtil.drawRobot(canvas, targetPoint, isWaypoint ? "#c040ff" : "#8000ff"); // purple and bright violet
+            DashboardUtil.drawRobot(canvas, targetPoint, isWaypoint ? "#c040ff" : "#8000ff");
             LogUtil.drivePath.set(String.format(Locale.US, "%.3f %.3f %.3f", targetPoint.x, targetPoint.y, targetPoint.heading));
         }
     }

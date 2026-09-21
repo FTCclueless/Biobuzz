@@ -6,13 +6,12 @@ import org.firstinspires.ftc.teamcode.utils.Utils;
 
 public class PriorityCRServo extends PriorityDevice {
     public enum ServoType {
-        // Radians/s is speed
         TORQUE(0.2162104887, Math.toRadians(60) / 0.25),
         SPEED(0.2162104887, Math.toRadians(60) / 0.11),
         SUPER_SPEED(0.2162104887, Math.toRadians(60) / 0.055),
         AXON_MINI(1 / Math.toRadians(305), 5.3403953024772129),
         AXON_MAX(0.1775562245447108, 6.5830247235911042),
-        AXON_MICRO(0.1775562245447108, 6.5830247235911042),  // TODO need to tune
+        AXON_MICRO(0.1775562245447108, 6.5830247235911042),
         AMAZON(0.2122065908, Math.toRadians(60) / 0.13),
         PRO_MODELER(0.32698, Math.toRadians(60) / 0.139),
         JX(0.3183098862, Math.toRadians(60) / 0.12),
@@ -27,6 +26,8 @@ public class PriorityCRServo extends PriorityDevice {
         }
     }
 
+    public static final double CALL_LENGTH_MILLIS = 1.2;
+
     public CRServo[] servo;
     double power = 0;
     double lastPower = 0;
@@ -39,13 +40,17 @@ public class PriorityCRServo extends PriorityDevice {
         this.servo = new CRServo[]{servo};
         this.reversed = reversed;
         this.servoType = servoType;
+        this.actuatorCount = 1;
+        this.callLengthMillis = CALL_LENGTH_MILLIS;
     }
 
-    public PriorityCRServo(CRServo[] servos, String name, ServoType servoType, boolean[] reversed, double basePriority, double priorityScale) { //one of the servos must be reversed prior to use
+    public PriorityCRServo(CRServo[] servos, String name, ServoType servoType, boolean[] reversed, double basePriority, double priorityScale) {
         super(basePriority, priorityScale, name);
         this.servo = servos;
         this.reversed = reversed;
         this.servoType = servoType;
+        this.actuatorCount = servos.length;
+        this.callLengthMillis = CALL_LENGTH_MILLIS;
     }
 
     public void setTargetPower(double power) {
@@ -53,15 +58,24 @@ public class PriorityCRServo extends PriorityDevice {
     }
 
     @Override
+    protected double commandedValue() { return power; }
+
+    @Override
+    protected boolean hasPendingWrite() { return power != lastPower; }
+
+    @Override
+    protected double error() { return Math.abs(power - lastPower); }
+
+    @Override
     protected double getPriority(double timeRemaining) {
-        if (power-lastPower == 0) {
+        if (!hasPendingWrite()) {
             lastUpdateTime = System.nanoTime();
             return 0;
         }
-        if (timeRemaining * 1000.0 <= callLengthMillis/2.0) {
+        if (timeRemaining * 1000.0 <= costMillis()) {
             return 0;
         }
-        return basePriority + Math.abs(power-lastPower) + (System.nanoTime()-lastUpdateTime)/1.0E6 * priorityScale;
+        return rank();
     }
 
     @Override

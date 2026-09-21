@@ -12,13 +12,10 @@ public class Utils {
     }
 
     public static double headingClip(double value) {
-        while(value >= Math.PI) {
-            value -= 2*Math.PI;
-        }
-        while(value <= -Math.PI) {
-            value += 2*Math.PI;
-        }
-        return value;
+        double a = value % (2*Math.PI);
+        if (a > Math.PI) a -= 2*Math.PI;
+        else if (a <= -Math.PI) a += 2*Math.PI;
+        return a;
     }
 
     public static boolean withinThreshold(double value, double minThreshold, double maxThreshold) {
