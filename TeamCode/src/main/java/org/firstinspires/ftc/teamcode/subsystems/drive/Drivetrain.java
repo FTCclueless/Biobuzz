@@ -266,25 +266,14 @@ public class Drivetrain {
 
     private double maxPower = 1.0;
     private boolean isWaypoint = false;
-    public static double KIN_TRACK_WIDTH = 14.0, KIN_WHEEL_BASE = 13.0, MAX_WHEEL_SPEED = 66.0;
-
-    public static double PATH_CONTOUR_GAIN = 3.2, PATH_LAG_GAIN = 0.9;
-    public static double PATH_HEADING_GAIN = 4.0, PATH_ACCEL_LEAD = 0.03;
-
     public void followTrajectory(Trajectory trajectory) {
-        if (kinematics == null) {
-            kinematics = new MecanumKinematics(KIN_TRACK_WIDTH, KIN_WHEEL_BASE, MAX_WHEEL_SPEED);
-        }
+        kinematics = DriveConstants.kinematics();
         trajectoryEndPose = trajectory.poseAt(trajectory.length());
         this.isWaypoint = false;
 
         trajectory.resetMarkers();
         trajectoryDrawPoints = DashboardUtil.samplePath(trajectory.path());
-        trajectoryFollower = new PathFollower(trajectory, kinematics)
-                .contourGain(PATH_CONTOUR_GAIN)
-                .lagGain(PATH_LAG_GAIN)
-                .headingGain(PATH_HEADING_GAIN)
-                .accelLead(PATH_ACCEL_LEAD);
+        trajectoryFollower = DriveConstants.follower(trajectory, kinematics);
         state = State.FOLLOW_TRAJECTORY;
     }
 

@@ -6,7 +6,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Robot;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.geometry.PathBuilder;
-import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.FrictionEllipse;
+import org.firstinspires.ftc.teamcode.subsystems.drive.DriveConstants;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.Trajectory;
 import org.firstinspires.ftc.teamcode.subsystems.drive.Drivetrain;
 import org.firstinspires.ftc.teamcode.utils.Globals;
@@ -31,11 +31,7 @@ public class ExampleAuto extends LinearOpMode {
         Pose2d startPose = new Pose2d(0, 0, 0);
         robot.drivetrain.setPoseEstimate(startPose);
 
-        FrictionEllipse ellipse = FrictionEllipse.typicalFtc();
-
-        Trajectory out = new PathBuilder()
-                .ellipse(ellipse)
-                .safetyFactor(0.85)
+        Trajectory out = DriveConstants.pathBuilder()
                 .start(0, 0, 0)
                 .end(SIZE, 0, 0)
                 .velocities(0, 0)
@@ -43,9 +39,7 @@ public class ExampleAuto extends LinearOpMode {
                 .endHeading(0)
                 .build();
 
-        Trajectory around = new PathBuilder()
-                .ellipse(ellipse)
-                .safetyFactor(0.85)
+        Trajectory around = DriveConstants.pathBuilder()
                 .start(SIZE, 0, 0)
                 .waypoint(SIZE, SIZE * 0.5, 3.0)
                 .end(SIZE, SIZE, 0)
@@ -53,9 +47,7 @@ public class ExampleAuto extends LinearOpMode {
                 .headingCandidate(PathBuilder.HeadingChoice.TANGENT)
                 .build();
 
-        Trajectory home = new PathBuilder()
-                .ellipse(ellipse)
-                .safetyFactor(0.85)
+        Trajectory home = DriveConstants.pathBuilder()
                 .start(SIZE, SIZE, 0)
                 .waypoint(SIZE * 0.5, SIZE, 3.0)
                 .end(0, 0, 0, 0)

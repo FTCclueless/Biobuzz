@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Robot;
+import org.firstinspires.ftc.teamcode.subsystems.drive.DriveConstants;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.MecanumKinematics;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.PathFollower;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.FrictionEllipse;
@@ -38,15 +39,7 @@ public class GainSweeper extends LinearOpMode {
 
     public static int SHAPE = PathShapes.STRAIGHT;
     public static double LENGTH = 48.0;
-    public static double V_FORWARD = 62.0, V_STRAFE = 48.0;
-    public static double A_FORWARD = 70.0, A_STRAFE = 52.0;
-    public static double STALL_RATIO = 3.5, SAFETY = 0.85;
-    public static double TRACK_WIDTH = 14.0, WHEEL_BASE = 13.0, MAX_WHEEL_SPEED = 66.0;
-
-    public static double FIXED_HEADING_GAIN = 4.0;
-    public static double FIXED_CONTOUR_GAIN = 3.2;
-    public static double FIXED_LAG_GAIN = 0.9;
-    public static double FIXED_ACCEL_LEAD = 0.03;
+    // Limits, geometry, and the gains NOT being swept all come from DriveConstants.
 
     private Robot robot;
     private FrictionEllipse ellipse;
@@ -66,12 +59,11 @@ public class GainSweeper extends LinearOpMode {
 
         MergeLocalizer.useCamera = false;
 
-        ellipse = new FrictionEllipse(V_FORWARD, V_STRAFE, A_FORWARD, A_STRAFE,
-                MAX_WHEEL_SPEED, (TRACK_WIDTH + WHEEL_BASE) / 2.0, STALL_RATIO);
-        kinematics = new MecanumKinematics(TRACK_WIDTH, WHEEL_BASE, MAX_WHEEL_SPEED);
+        ellipse = DriveConstants.ellipse();
+        kinematics = DriveConstants.kinematics();
 
-        Trajectory forward = PathShapes.build(SHAPE, LENGTH, ellipse, SAFETY);
-        Trajectory back = PathShapes.reverse(forward, ellipse, SAFETY);
+        Trajectory forward = PathShapes.build(SHAPE, LENGTH, ellipse, DriveConstants.SAFETY);
+        Trajectory back = PathShapes.reverse(forward, ellipse, DriveConstants.SAFETY);
         Pose2d startPose = forward.poseAt(0);
 
         telemetry.addLine("Gain Sweeper");
@@ -117,10 +109,10 @@ public class GainSweeper extends LinearOpMode {
         traj.resetMarkers();
 
         PathFollower follower = new PathFollower(traj, kinematics)
-                .headingGain(TARGET == Target.HEADING ? value : FIXED_HEADING_GAIN)
-                .contourGain(TARGET == Target.CONTOUR ? value : FIXED_CONTOUR_GAIN)
-                .lagGain(FIXED_LAG_GAIN)
-                .accelLead(TARGET == Target.ACCEL_LEAD ? value : FIXED_ACCEL_LEAD);
+                .headingGain(TARGET == Target.HEADING ? value : DriveConstants.HEADING_GAIN)
+                .contourGain(TARGET == Target.CONTOUR ? value : DriveConstants.CONTOUR_GAIN)
+                .lagGain(DriveConstants.LAG_GAIN)
+                .accelLead(TARGET == Target.ACCEL_LEAD ? value : DriveConstants.ACCEL_LEAD);
 
         robot.update();
         follower.reset();

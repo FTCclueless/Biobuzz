@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Robot;
+import org.firstinspires.ftc.teamcode.subsystems.drive.DriveConstants;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.MecanumKinematics;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.PathFollower;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.FrictionEllipse;
@@ -29,23 +30,8 @@ public class PathingTuner extends LinearOpMode {
     public static int SHAPE = 0;
     public static double LENGTH = 48.0;
 
-    public static double V_FORWARD = 62.0;
-    public static double V_STRAFE  = 48.0;
-    public static double A_FORWARD = 70.0;
-    public static double A_STRAFE  = 52.0;
-    public static double STALL_RATIO = 3.5;
-    public static double SAFETY = 0.85;
-
-    public static double TRACK_WIDTH = 14.0;
-    public static double WHEEL_BASE = 13.0;
-    public static double MAX_WHEEL_SPEED = 66.0;
-
+    // Limits, geometry, and gains live in DriveConstants -- edit them there in Dashboard.
     public static boolean OPEN_LOOP = true;
-
-    public static double HEADING_GAIN = 4.0;
-    public static double CONTOUR_GAIN = 3.2;
-    public static double LAG_GAIN = 0.9;
-    public static double ACCEL_LEAD = 0.03;
 
     @Override
     public void runOpMode() {
@@ -54,19 +40,13 @@ public class PathingTuner extends LinearOpMode {
         Robot robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);
 
-        FrictionEllipse ellipse = new FrictionEllipse(
-                V_FORWARD, V_STRAFE, A_FORWARD, A_STRAFE,
-                MAX_WHEEL_SPEED, (TRACK_WIDTH + WHEEL_BASE) / 2.0, STALL_RATIO);
+        FrictionEllipse ellipse = DriveConstants.ellipse();
 
         Trajectory traj = buildShape(ellipse);
-        MecanumKinematics kinematics =
-                new MecanumKinematics(TRACK_WIDTH, WHEEL_BASE, MAX_WHEEL_SPEED);
+        MecanumKinematics kinematics = DriveConstants.kinematics();
 
-        PathFollower follower = new PathFollower(traj, kinematics)
-                .headingGain(OPEN_LOOP ? 0 : HEADING_GAIN)
-                .contourGain(OPEN_LOOP ? 0 : CONTOUR_GAIN)
-                .lagGain(OPEN_LOOP ? 0 : LAG_GAIN)
-                .accelLead(OPEN_LOOP ? 0 : ACCEL_LEAD);
+        PathFollower follower = DriveConstants.follower(traj, kinematics);
+        if (OPEN_LOOP) follower.headingGain(0).contourGain(0).lagGain(0).accelLead(0);
 
         Pose2d start = traj.poseAt(0);
         robot.drivetrain.setPoseEstimate(start);
@@ -163,7 +143,7 @@ public class PathingTuner extends LinearOpMode {
                     "SATURATED %.0f%% of the run. The plan wants more than the wheels have.",
                     100 * m.saturatedFraction()));
             out.add(String.format(Locale.US,
-                    "  -> lower SAFETY to %.2f, or re-measure the ellipse.", Math.max(0.5, SAFETY - 0.1)));
+                    "  -> lower SAFETY to %.2f, or re-measure the ellipse.", Math.max(0.5, DriveConstants.SAFETY - 0.1)));
             out.add("  Gains are meaningless until this is clear.");
             return out;
         }
@@ -182,7 +162,7 @@ public class PathingTuner extends LinearOpMode {
                     "WEAVING: %.1f sign changes/s at %.2f in RMS. Gain is past the limit.",
                     m.weaveHz(), m.rmsContour()));
             out.add(String.format(Locale.US,
-                    "  -> lower CONTOUR_GAIN to %.2f.", CONTOUR_GAIN * 0.7));
+                    "  -> lower CONTOUR_GAIN to %.2f.", DriveConstants.CONTOUR_GAIN * 0.7));
             return out;
         }
 
@@ -201,7 +181,7 @@ public class PathingTuner extends LinearOpMode {
                     m.meanLagAccel(), m.meanLagCruise()));
             out.add(String.format(Locale.US,
                     "  -> raise ACCEL_LEAD to %.3f. Leave LAG_GAIN alone.",
-                    Math.min(0.08, ACCEL_LEAD + 0.01)));
+                    Math.min(0.08, DriveConstants.ACCEL_LEAD + 0.01)));
             return out;
         }
 
@@ -209,7 +189,7 @@ public class PathingTuner extends LinearOpMode {
             out.add(String.format(Locale.US,
                     "Tracking is loose (%.2f in RMS) and not weaving -- room to stiffen.", m.rmsContour()));
             out.add(String.format(Locale.US,
-                    "  -> raise CONTOUR_GAIN to %.2f and re-run.", CONTOUR_GAIN * 1.3));
+                    "  -> raise CONTOUR_GAIN to %.2f and re-run.", DriveConstants.CONTOUR_GAIN * 1.3));
             return out;
         }
 
@@ -220,7 +200,7 @@ public class PathingTuner extends LinearOpMode {
     }
 
     private Trajectory buildShape(FrictionEllipse ellipse) {
-        return PathShapes.build(SHAPE, LENGTH, ellipse, SAFETY);
+        return PathShapes.build(SHAPE, LENGTH, ellipse, DriveConstants.SAFETY);
     }
 
     private String shapeName() { return PathShapes.name(SHAPE); }

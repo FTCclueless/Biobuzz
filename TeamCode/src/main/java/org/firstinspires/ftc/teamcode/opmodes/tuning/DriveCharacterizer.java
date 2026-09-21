@@ -241,7 +241,7 @@ public class DriveCharacterizer extends LinearOpMode {
             telemetry.addLine();
             telemetry.addData("loop time (s)", "%.4f", loop);
             telemetry.addLine();
-            telemetry.addLine("=== paste into PathingTuner ===");
+            telemetry.addLine("=== paste into DriveConstants ===");
             telemetry.addLine(String.format(Locale.US, "V_FORWARD  = %.1f;", vForward));
             telemetry.addLine(String.format(Locale.US, "V_STRAFE   = %.1f;", vStrafe));
             telemetry.addLine(String.format(Locale.US, "A_FORWARD  = %.1f;   // achieved, not the traction limit -- use SlipTest", aForward));
