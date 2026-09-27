@@ -159,7 +159,6 @@ public class SlipTest extends LinearOpMode {
             telemetry.addLine(STRAFE
                     ? "Now set STRAFE = false and run again for A_FORWARD."
                     : "Now set STRAFE = true and run again for A_STRAFE.");
-            telemetry.addLine("Then put the flywheel encoder back.");
             telemetry.update();
             robot.update();
         }

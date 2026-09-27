@@ -8,21 +8,17 @@ Everything sits under the normal package root, next to the rest of the robot cod
 TeamCode/src/main/java/org/firstinspires/ftc/teamcode/
 ```
 
-| Folder | Files | What it is |
-|---|---|---|
-| `pathing/geometry/` | 6 | Beziers, arc-length `Path`, spline fitter, `PathBuilder` |
-| `pathing/opt/` | 2 | `BoxQP`, `MinCurvatureOptimizer` |
-| `pathing/profile/` | 5 | Friction ellipse, heading plans, velocity profile, `Trajectory` |
-| `pathing/follow/` | 5 | Kinematics, GVF, slip detector, `PathFollower`, ILC |
-| `control/` | 5 | `Matrix`, `LQR`, `MechanismModel`, `MotionProfile`, `LQRController` |
+| Folder | What it is |
+|---|---|
+| `subsystems/drive/pathing/geometry/` | Beziers, arc-length `Path`, spline fitter, `PathBuilder` |
+| `subsystems/drive/pathing/opt/` | `BoxQP`, `MinCurvatureOptimizer` |
+| `subsystems/drive/pathing/profile/` | Friction ellipse, heading plans, velocity profile, `Trajectory` |
+| `subsystems/drive/pathing/follow/` | Kinematics, GVF, slip detector, `PathFollower`, ILC |
 
 Geometry and numerics come from the robot's own `utils` package — `Vector2`, `Pose2d`,
 `MathUtil`, `Utils.headingClip` / `Utils.minMaxClip`, `RateEstimator`. The planner defines
 no vector or pose type of its own, so a pose read off the localizer feeds
 `PathFollower.update` directly with no conversion.
-
-`control/` references nothing else, and `pathing/` never references `control/`, so the two
-halves stay independent.
 
 `Vector2` is mutable, but the planner treats it as a value: it stores and reuses the
 vectors it hands back. Use the copying operations (`plus`, `minus`, `times`, `unit`,
@@ -95,8 +91,8 @@ Trajectory traj = new PathBuilder()
         .endHeading(Math.toRadians(-45))
 
         // Actions, indexed by DISTANCE along the path, not time.
-        .marker(20, "raiseLift", () -> lift.setGoal(24, 40, 120))
-        .markerBeforeEnd(8, "openClaw", () -> claw.open())
+        .marker(20, "checkpoint", () -> telemetry.addLine("checkpoint reached"))
+        .markerBeforeEnd(8, "approach", () -> telemetry.addLine("approaching end"))
 
         .build();
 ```
@@ -121,7 +117,7 @@ can usually take 2–4 inches.
 | Choice | Behaviour | Use for |
 |---|---|---|
 | `TANGENT` | Nose along the path | Long travel legs — usually fastest |
-| `TANGENT_REVERSED` | Nose backwards along the path | Intake on the back |
+| `TANGENT_REVERSED` | Nose backwards along the path | Driving backward |
 | `CONSTANT_START` | Hold the starting heading | Short moves where turning is not worth it |
 | `LINEAR` | Sweep start heading → end heading | Simple repositioning |
 | `FIXED_AT_END` | Tangent, then square up at the end | Scoring approaches |
@@ -138,9 +134,8 @@ System.out.print(builder.compareHeadings());
 
 ### Markers
 
-Markers fire by **arc length**, not time, which is what you actually mean by "drop the
-intake 6 inches before the sample". If the robot runs slow — dead battery, heavy game
-element — a time-indexed marker fires while it is still feet away; an s-indexed one fires
+Markers fire by **arc length**, not time, which is useful for reporting a checkpoint
+6 inches before the path end. If the robot runs slow, a time-indexed marker fires while it is still feet away; an s-indexed one fires
 where you asked.
 
 ```java

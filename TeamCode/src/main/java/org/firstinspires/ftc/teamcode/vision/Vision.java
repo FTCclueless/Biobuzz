@@ -83,9 +83,7 @@ public class Vision {
 
             ArrayList<AprilTagDetection> positionTagDetections = new ArrayList<>();
             for (AprilTagDetection detection: detections) {
-                if (detection.id != 20 && detection.id != 24) {
-                    Globals.BALL_PATTERN = detections.get(0).id;
-                } else {
+                if (detection.id == 20 || detection.id == 24) {
                     positionTagDetections.add(detection);
                 }
             }

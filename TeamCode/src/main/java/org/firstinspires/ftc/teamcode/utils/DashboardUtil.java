@@ -85,31 +85,4 @@ public class DashboardUtil {
         canvas.strokeLine(x1, y1, x2, y2);
     }
 
-    public static void drawRobot(Canvas canvas, Pose2d pose, String color, double turretAngle1, String turretColor1, double turretAngle2, String turretColor2) {
-        canvas.setStroke(color);
-        canvas.setStrokeWidth(1);
-        canvas.strokeCircle(pose.x, pose.y, ROBOT_RADIUS);
-
-        double rdx = Math.cos(pose.heading), rdy = Math.sin(pose.heading);
-        double rx1 = pose.x + rdx * 6, ry1 = pose.y + rdy * 6;
-        double rx2 = pose.x + rdx * ROBOT_RADIUS, ry2 = pose.y + rdy * ROBOT_RADIUS;
-        canvas.strokeLine(rx1, ry1, rx2, ry2);
-
-        canvas.setStroke(turretColor1);
-        canvas.setStrokeWidth(5);
-        double t1dx = Math.cos(pose.heading + turretAngle1), t1dy = Math.sin(pose.heading + turretAngle1);
-        double t1x1 = pose.x + t1dx * 96, t1y1 = pose.y + t1dy * 96;
-        canvas.strokeLine(pose.x, pose.y, t1x1, t1y1);
-
-        canvas.setStroke(turretColor2);
-        canvas.setStrokeWidth(1);
-        double t2dx = Math.cos(pose.heading + turretAngle2), t2dy = Math.sin(pose.heading + turretAngle2);
-        double t2x1 = pose.x + t2dx * ROBOT_RADIUS, t2y1 = pose.y + t2dy * ROBOT_RADIUS;
-        double t2x2 = pose.x + t2dx * 96, t2y2 = pose.y + t2dy * 96;
-        canvas.strokeLine(t2x1, t2y1, t2x2, t2y2);
-
-        canvas.setStrokeWidth(2);
-        canvas.setStroke(color);
-        canvas.strokeCircle(pose.x, pose.y, 0.5);
-    }
 }

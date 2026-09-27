@@ -3,20 +3,13 @@ package org.firstinspires.ftc.teamcode;
 import static org.firstinspires.ftc.teamcode.utils.Globals.GET_LOOP_TIME;
 import static org.firstinspires.ftc.teamcode.utils.Globals.START_LOOP;
 
-import android.util.Log;
-
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.photon.PhotonCore;
 
 import com.acmerobotics.dashboard.canvas.Canvas;
 
 import org.firstinspires.ftc.teamcode.sensors.Sensors;
-import org.firstinspires.ftc.teamcode.subsystems.park.Park;
-import org.firstinspires.ftc.teamcode.subsystems.shooter.Shooter;
-import org.firstinspires.ftc.teamcode.subsystems.intake.Intake;
-import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
-import org.firstinspires.ftc.teamcode.utils.RunMode;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
 import org.firstinspires.ftc.teamcode.utils.priority.HardwareQueue;
 import org.firstinspires.ftc.teamcode.subsystems.drive.Drivetrain;
@@ -32,9 +25,6 @@ public class Robot {
 
     public Sensors sensors;
     public Drivetrain drivetrain;
-    public Intake intake;
-    public Shooter shooter;
-    public Park park;
 
     private BooleanSupplier stopChecker = null;
     public ArrayList<Consumer<Canvas>> canvasDrawTasks = new ArrayList<>();
@@ -52,10 +42,6 @@ public class Robot {
 
         sensors = new Sensors(this);
         drivetrain = new Drivetrain(this, useVision ? new Vision(hardwareMap) : null);
-        intake = new Intake(this);
-        shooter = new Shooter(this);
-        park = new Park(this);
-        sensors.resetTurretAngleEncoder();
     }
 
     public void update() {
@@ -66,9 +52,6 @@ public class Robot {
         sensors.update();
 
         drivetrain.update();
-        intake.update();
-        shooter.update();
-        park.update();
 
         if (this.stopChecker != null && this.stopChecker.getAsBoolean()) return;
 

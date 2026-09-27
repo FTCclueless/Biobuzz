@@ -58,14 +58,6 @@ public class LogUtil {
     // These are all of the fields that we want in the datalog.
     // Note that order here is NOT important. The order is important in the setFields() call below
     //public static Datalogger.GenericField loopTime = new Datalogger.GenericField("loopTime");
-    public static Datalogger.GenericField intakeState = new Datalogger.GenericField("intakeState");
-    public static StateField shooterState = new StateField("shooterState");
-    public static Datalogger.GenericField turretAngle = new Datalogger.GenericField("turretAngle");
-    public static Datalogger.GenericField turretTarget = new Datalogger.GenericField("turretTarget");
-    public static Datalogger.GenericField flywheelVelocity = new Datalogger.GenericField("flywheelVelocity");
-    public static Datalogger.GenericField flywheelTarget = new Datalogger.GenericField("flywheelTarget");
-    public static Datalogger.GenericField hoodAngle = new Datalogger.GenericField("hoodAngle");
-    public static Datalogger.GenericField intakeReversed = new Datalogger.GenericField("intakeReversed");
     public static Datalogger.GenericField driveState = new Datalogger.GenericField("driveState");
     public static Datalogger.GenericField driveCurrentX = new Datalogger.GenericField("driveCurrentX");
     public static Datalogger.GenericField driveCurrentY = new Datalogger.GenericField("driveCurrentY");
@@ -75,8 +67,6 @@ public class LogUtil {
     //public static Datalogger.GenericField driveTargetAngle = new Datalogger.GenericField("driveTargetAngle");
     public static Datalogger.GenericField drivePath = new Datalogger.GenericField("drivePath");
     public static EventField event = new EventField("event");
-    public static Datalogger.GenericField parkState = new Datalogger.GenericField("parkState");
-    public static Datalogger.GenericField parkAngle = new Datalogger.GenericField("parkAngle");
 
     private static long timeAtNextWrite;
 
@@ -96,7 +86,7 @@ public class LogUtil {
         long timeNow = System.currentTimeMillis();
         String fileName = "Log_" + timeNow + "_"
             + new SimpleDateFormat("yyyy-MM-dd_HH.mm.ss", Locale.US).format(new Date(timeNow))
-            + "_CAT5_Decode_" + Globals.RUNMODE.toString();
+            + "_Offseason_" + Globals.RUNMODE.toString();
         //TelemetryUtil.packet.put("LogUtil : filename", fileName);
 
         if (datalogger != null) throw new IllegalStateException("LogUtil was already initialized");
@@ -111,14 +101,6 @@ public class LogUtil {
             // Note that order *IS* important here! The order in which we list
             // the fields is the order in which they will appear in the log.
             .setFields(
-                intakeState,
-                shooterState,
-                turretAngle,
-                turretTarget,
-                flywheelVelocity,
-                flywheelTarget,
-                hoodAngle,
-                intakeReversed,
                 driveCurrentX,
                 driveCurrentY,
                 driveCurrentAngle,
