@@ -15,9 +15,9 @@
             <DigitalDevice name="light0P" port="1" />
         </LynxModule>
         <LynxModule name="Control Hub" port="173">
-            <goBILDA5202SeriesMotor name="rightRear" port="0" />
-            <goBILDA5202SeriesMotor name="leftRear" port="1" />
-            <goBILDA5202SeriesMotor name="rightFront" port="2" />
+            <goBILDA5202SeriesMotor name="rightFront" port="0" />
+            <goBILDA5202SeriesMotor name="rightRear" port="1" />
+            <goBILDA5202SeriesMotor name="leftRear" port="2" />
             <goBILDA5202SeriesMotor name="leftFront" port="3" />
             <Servo name="turret1" port="0" />
             <Servo name="flywheelBlocker" port="1" />
