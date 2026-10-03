@@ -173,7 +173,9 @@ public final class PathFollower {
         lastContourError = contourError;
         lastLagError = lagError;
 
-        double distToEnd = Vector2.distance(pose.toVec2(), path.endPoint());
+        // Hot path: compute this without allocating a Vector2 every loop.
+        Vector2 endPoint = path.endPoint();
+        double distToEnd = Math.hypot(pose.x - endPoint.x, pose.y - endPoint.y);
         double headErr = Math.abs(Utils.headingClip(
                 trajectory.heading().heading(path.length()) - pose.heading));
         double endWindow = Math.max(2.0 * positionTolerance, 0.02 * path.length());

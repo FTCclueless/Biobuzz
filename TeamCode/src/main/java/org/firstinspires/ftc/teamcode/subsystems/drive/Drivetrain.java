@@ -21,7 +21,6 @@ import org.firstinspires.ftc.teamcode.utils.AngleUtil;
 import org.firstinspires.ftc.teamcode.utils.DashboardUtil;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
-import org.firstinspires.ftc.teamcode.utils.PID;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
 import org.firstinspires.ftc.teamcode.utils.Vector2;
@@ -173,12 +172,7 @@ public class Drivetrain {
     }
 
     private Pose2d targetPoint = new Pose2d (0, 0, 0);
-    public static PID xPID = new PID (0.2, 0.0, 0.007);
-    public static PID yPID = new PID (0.2, 0.0, 0.007);
-    public static PID turnPID = new PID (0.4, 0.0, 0.002);
-    public static PID hPID = new PID (0.53, 0.0, 0.0);
-    public static double turnKStatic = 0.15;
-    public static double xThresh = 1.5, yThresh = 1.5, hThresh = Math.toRadians(2.5), waypointThresh = 3.0;
+    // Point-to-point PIDs and thresholds live in DriveConstants.
     public static double xError = 0.0, yError = 0.0, hError = 0.0;
 
     public void update() {
@@ -192,9 +186,9 @@ public class Drivetrain {
                 PIDF();
                 if (atPoint()) {
                     state = isWaypoint ? State.WAIT : State.BRAKE;
-                    xPID.resetIntegral();
-                    yPID.resetIntegral();
-                    turnPID.resetIntegral();
+                    DriveConstants.xPID.resetIntegral();
+                    DriveConstants.yPID.resetIntegral();
+                    DriveConstants.turnPID.resetIntegral();
                 }
                 break;
             case BRAKE:
@@ -248,11 +242,11 @@ public class Drivetrain {
     double fwd, strafe, h;
 
     private void PIDF() {
-        fwd = xPID.update(xError, -maxPower, maxPower);
-        strafe = yPID.update(yError, -maxPower, maxPower);
-        h = turnPID.update(hError, -maxPower, maxPower);
-        if (hError > hThresh) h += turnKStatic;
-        if (hError < -hThresh) h -= turnKStatic;
+        fwd = DriveConstants.xPID.update(xError, -maxPower, maxPower);
+        strafe = DriveConstants.yPID.update(yError, -maxPower, maxPower);
+        h = DriveConstants.turnPID.update(hError, -maxPower, maxPower);
+        if (hError > DriveConstants.H_THRESH) h += DriveConstants.TURN_K_STATIC;
+        if (hError < -DriveConstants.H_THRESH) h -= DriveConstants.TURN_K_STATIC;
 
         setMinPowersToOvercomeFriction(1.0);
 
@@ -260,8 +254,8 @@ public class Drivetrain {
     }
 
     private boolean atPoint() {
-        if (isWaypoint) return Math.abs(xError) < waypointThresh && Math.abs(yError) < waypointThresh;
-        return Math.abs(xError) < xThresh && Math.abs(yError) < yThresh && Math.abs(hError) < hThresh;
+        if (isWaypoint) return Math.abs(xError) < DriveConstants.WAYPOINT_THRESH && Math.abs(yError) < DriveConstants.WAYPOINT_THRESH;
+        return Math.abs(xError) < DriveConstants.X_THRESH && Math.abs(yError) < DriveConstants.Y_THRESH && Math.abs(hError) < DriveConstants.H_THRESH;
     }
 
     private double maxPower = 1.0;
@@ -287,9 +281,9 @@ public class Drivetrain {
         this.isWaypoint = isWaypoint;
 
         if (lastTargetPoint.x != targetPoint.x || lastTargetPoint.y != targetPoint.y || lastTargetPoint.heading != targetPoint.heading || state == State.DRIVE) {
-            xPID.resetIntegral();
-            yPID.resetIntegral();
-            turnPID.resetIntegral();
+            DriveConstants.xPID.resetIntegral();
+            DriveConstants.yPID.resetIntegral();
+            DriveConstants.turnPID.resetIntegral();
             state = State.PID_TO_POINT;
         }
     }
@@ -351,16 +345,16 @@ public class Drivetrain {
 
         if (lockHeading) {
             if (!wasLocking) {
-                turnPID.resetIntegral();
+                DriveConstants.turnPID.resetIntegral();
             }
             wasLocking = true;
 
             double error = AngleUtil.clipAngle(Math.toRadians(targetHeading) * (Globals.isRed ? 1 : -1) - ROBOT_POSITION.heading);
             if (Math.abs(error) < Math.toRadians(headingLockDeadzone)) {
                 turn = 0;
-                turnPID.resetIntegral();
+                DriveConstants.turnPID.resetIntegral();
             } else {
-                turn = turnPID.update(error, -maxPower, maxPower) + turnKStatic * Math.signum(error);
+                turn = DriveConstants.turnPID.update(error, -maxPower, maxPower) + DriveConstants.TURN_K_STATIC * Math.signum(error);
             }
         } else {
             wasLocking = false;

@@ -129,6 +129,23 @@ public final class LQRController {
     }
 
     public double calculate(double position, double velocity, double batteryVolts) {
+        return calculate(position, velocity, batteryVolts, Double.NaN);
+    }
+
+    /**
+     * Same as {@link #calculate(double, double, double)}, but with the feedforward supplied by
+     * the caller instead of computed from kV/kA/kS.
+     *
+     * Use this when a measured lookup table describes the mechanism better than the linear
+     * model does -- a flywheel's voltage/speed curve bends at high speed because air drag is
+     * not linear, and a table of real measurements captures that where a straight line cannot.
+     * The LQR feedback term is unchanged either way: it still corrects whatever the
+     * feedforward failed to predict.
+     *
+     * @param feedforwardVolts volts to apply before feedback; NaN falls back to the model
+     */
+    public double calculate(double position, double velocity, double batteryVolts,
+                            double feedforwardVolts) {
         if (profile != null) {
             profileTime += dt;
             MotionProfile.State st = profile.get(profileTime);
@@ -148,7 +165,9 @@ public final class LQRController {
             predVel = predictor.velocity();
         }
 
-        double ff = model.feedforward(refVelocity, refAccel);
+        double ff = Double.isNaN(feedforwardVolts)
+                ? model.feedforward(refVelocity, refAccel)
+                : feedforwardVolts;
 
         double fb;
         if (model.type == MechanismModel.Type.POSITION) {
@@ -178,7 +197,13 @@ public final class LQRController {
     }
 
     public double calculateVelocity(double velocity, double batteryVolts) {
-        return calculate(0, velocity, batteryVolts);
+        return calculate(0, velocity, batteryVolts, Double.NaN);
+    }
+
+    /** Velocity control with a caller-supplied feedforward. See the 4-argument calculate(). */
+    public double calculateVelocity(double velocity, double batteryVolts,
+                                    double feedforwardVolts) {
+        return calculate(0, velocity, batteryVolts, feedforwardVolts);
     }
 
     public boolean atGoal(double position, double velocity) {

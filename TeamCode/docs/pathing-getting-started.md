@@ -50,10 +50,15 @@ executes.
 Everything is in **inches** and **radians**, in field coordinates. Headings are CCW-positive
 with 0 along +x.
 
+### Always start from DriveConstants
+
+`DriveConstants.pathBuilder()` pre-loads your measured speed/acceleration limits and safety
+factor. A bare `new PathBuilder()` silently plans against generic defaults instead.
+
 ### Minimal path
 
 ```java
-Trajectory traj = new PathBuilder()
+Trajectory traj = DriveConstants.pathBuilder()
         .start(12, 60, Math.toRadians(0))   // where the robot starts, and its heading
         .end(60, 60, 0)                     // where it ends; 0 = no lateral freedom
         .build();
@@ -65,7 +70,7 @@ optimization, friction-ellipse profiling — so call it in `init()`, never in th
 ### A realistic path
 
 ```java
-Trajectory traj = new PathBuilder()
+Trajectory traj = DriveConstants.pathBuilder()
         // Start pinned at the robot's actual starting pose.
         .start(12, 60, Math.toRadians(0))
 
@@ -82,9 +87,6 @@ Trajectory traj = new PathBuilder()
         // Terminal speeds. Leave at 0,0 to stop; set nonzero to chain into the next path
         // without stopping.
         .velocities(0, 0)
-
-        // Plan at 85% of measured grip, leaving authority for the follower. See PITFALL #7.
-        .safetyFactor(0.85)
 
         // Slow down near the scoring position: centre, radius, max in/s.
         .slowZone(88, 36, 10, 18)
@@ -153,7 +155,7 @@ where you asked.
 
 ```java
 // init()
-Trajectory traj = new PathBuilder()...build();
+Trajectory traj = DriveConstants.pathBuilder()...build();
 MecanumKinematics kin = new MecanumKinematics(TRACK_WIDTH, WHEEL_BASE, MAX_WHEEL_SPEED);
 PathFollower follower = new PathFollower(traj, kin);
 
@@ -174,6 +176,10 @@ while (opModeIsActive() && !follower.isFinished()) {
 }
 ```
 
+Then stop the motors. In practice you rarely write that loop yourself -- use
+`robot.drivetrain.followTrajectory(traj)` and wait for `Drivetrain.State.WAIT`, as `ExampleAuto`
+does.
+
 Then stop the motors. Put `follower.fault()` on telemetry — if the follower ever gets a
 non-finite pose it stops the robot rather than propagating NaN, and that string is how you
 find out.
@@ -184,8 +190,8 @@ Give the first path a nonzero end velocity and the second a matching start veloc
 the robot flows through the junction instead of stopping:
 
 ```java
-Trajectory legA = new PathBuilder().start(12,60,0).end(48,48,0).velocities(0, 25).build();
-Trajectory legB = new PathBuilder().start(48,48,0).end(84,36,0).velocities(25, 0).build();
+Trajectory legA = DriveConstants.pathBuilder().start(12,60,0).end(48,48,0).velocities(0, 25).build();
+Trajectory legB = DriveConstants.pathBuilder().start(48,48,0).end(84,36,0).velocities(25, 0).build();
 ```
 
 ### Errors you may hit at build time
