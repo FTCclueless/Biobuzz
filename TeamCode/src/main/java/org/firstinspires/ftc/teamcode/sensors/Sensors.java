@@ -169,7 +169,7 @@ public class Sensors {
         LogUtil.driveCurrentAngle.set(ROBOT_POSITION.heading);
     }
 
-    private double getTurretAngleRaw() { return robot.intake.feed.motor[0].getCurrentPosition() * (Math.PI) / -8192 / 2; }
+    private double getTurretAngleRaw() { return 0.0; }//robot.intake.feed.motor[0].getCurrentPosition() * (Math.PI) / -8192 / 2; }
     public void resetTurretAngleEncoder() {
         if (Globals.RUNMODE != RunMode.TELEOP) {
             turretAngleEncoderOffset = turretAngleEncoderPosition = getTurretAngleRaw();

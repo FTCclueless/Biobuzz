@@ -14,8 +14,8 @@ import org.firstinspires.ftc.teamcode.utils.priority.nPriorityServo;
 @Config
 public class Intake {
     private final Robot robot;
-    public final PriorityMotor roller, feed;
-    public final nPriorityServo rindex, lindex;
+    public final PriorityMotor intakeMotor;
+    //public final nPriorityServo rindex, lindex;
 
     private boolean requestIntake = false, requestShoot = false, requestOff = false, reversed = false;
 
@@ -25,7 +25,6 @@ public class Intake {
     public enum State {
         IDLE,
         INTAKE,
-        SHOOT_FEED,
         TEST
     }
 
@@ -34,55 +33,29 @@ public class Intake {
     public Intake(Robot robot) {
         this.robot = robot;
 
-        roller = new PriorityMotor(
-            new DcMotorEx[] {robot.hardwareMap.get(DcMotorEx.class, "roller")},
-            "roller", 2, 4,
+
+        intakeMotor = new PriorityMotor(
+            new DcMotorEx[] {robot.hardwareMap.get(DcMotorEx.class, "intake")},
+            "intake", 2, 4,
             new double[] {1}, robot.sensors
         );
 
-        feed = new PriorityMotor(
-            new DcMotorEx[] {robot.hardwareMap.get(DcMotorEx.class, "feed")},
-            "feed", 2, 4,
-            new double[] {1}, robot.sensors
-        );
-
-        rindex = new nPriorityServo(
-                new Servo[]{robot.hardwareMap.get(Servo.class, "rindex")},
-                "rindex", nPriorityServo.ServoType.AXON_MINI,
-                0.0, 1.0, 0.03,
-                new boolean[] {false},
-                2, 4
-        );
-
-        lindex = new nPriorityServo(
-                new Servo[]{robot.hardwareMap.get(Servo.class, "lindex")},
-                "lindex", nPriorityServo.ServoType.AXON_MINI,
-                0, 1, 0.83,
-                new boolean[] {false},
-                2, 4
-        );
-
-        robot.hardwareQueue.addDevices(roller, feed, rindex, lindex);
+        robot.hardwareQueue.addDevices(intakeMotor);
     }
 
     long turnedOffTime = 0;
 
     public void update() {
+        setRollerDirection(Math.signum(this.robot.drivetrain.getLastMoveVector().y) == -1.0);
         switch (state) {
             case IDLE: {
                 requestOff = false;
 
-                roller.setTargetPower(0.0);
-                feed.setTargetPower(System.currentTimeMillis() < turnedOffTime + intakeReverseDuration ? -intakeFeedPower : 0.0);
+                intakeMotor.setTargetPower(System.currentTimeMillis() < turnedOffTime + intakeReverseDuration ? -intakeFeedPower : 0.0);
 
                 if (requestIntake) {
                     requestIntake = false;
                     state = State.INTAKE;
-                }
-
-                if (requestShoot) {
-                    requestShoot = false;
-                    state = State.SHOOT_FEED;
                 }
 
                 break;
@@ -90,39 +63,13 @@ public class Intake {
             case INTAKE: {
                 requestIntake = false;
 
-                roller.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
-                feed.setTargetPower(intakeFeedPower * (reversed ? -1 : 1));
+                intakeMotor.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
 
                 if (requestOff) {
                     requestOff = false;
                     requestIntake = false;
                     requestShoot = false;
                     state = State.IDLE;
-                }
-
-                if (requestShoot) {
-                    requestShoot = false;
-                    state = State.SHOOT_FEED;
-                }
-
-                break;
-            }
-            case SHOOT_FEED: {
-                requestShoot = false;
-
-                roller.setTargetPowerSmooth(shootRollerPower, 0.1);
-                feed.setTargetPower(shootFeedPower);
-
-                if (requestOff) {
-                    requestOff = false;
-                    requestIntake = false;
-                    requestShoot = false;
-                    state = State.IDLE;
-                }
-
-                if (requestIntake) {
-                    requestIntake = false;
-                    state = State.INTAKE;
                 }
 
                 break;
@@ -147,13 +94,13 @@ public class Intake {
 
     public void setRollerDirection(boolean reversed) { this.reversed = reversed; }
 
-    public void setRightBlocker(boolean on) {
+    /*public void setRightBlocker(boolean on) {
         rindex.setTargetAngle(on ? 0.19 : 0.05);
-    }
+    }*/
 
-    public void setLeftBlocker(boolean on) {
+    /*public void setLeftBlocker(boolean on) {
         lindex.setTargetAngle(on ? 0.61 : 0.9);
-    }
+    }*/
 
     private void updateTelemetry() {
         TelemetryUtil.packet.put("Intake : state", this.state);

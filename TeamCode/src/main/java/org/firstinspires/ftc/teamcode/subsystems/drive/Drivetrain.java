@@ -46,7 +46,7 @@ public class Drivetrain {
         IDLE
     }
     public State state = State.IDLE;
-
+    private Vector2 lastMoveVector = new Vector2(0, 0);
     private PathFollower trajectoryFollower;
     private MecanumKinematics kinematics;
     private Pose2d trajectoryEndPose;
@@ -289,6 +289,7 @@ public class Drivetrain {
     }
 
     public void setMoveVector(Vector2 moveVector, double turn) {
+        this.lastMoveVector = moveVector;
         double[] powers = {
                 moveVector.x - turn - moveVector.y,
                 moveVector.x - turn + moveVector.y,
@@ -392,5 +393,9 @@ public class Drivetrain {
             DashboardUtil.drawRobot(canvas, targetPoint, isWaypoint ? "#c040ff" : "#8000ff");
             LogUtil.drivePath.set(String.format(Locale.US, "%.3f %.3f %.3f", targetPoint.x, targetPoint.y, targetPoint.heading));
         }
+    }
+
+    public Vector2 getLastMoveVector() {
+        return this.lastMoveVector;
     }
 }
