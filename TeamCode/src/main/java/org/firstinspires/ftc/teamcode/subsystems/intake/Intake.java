@@ -15,16 +15,21 @@ import org.firstinspires.ftc.teamcode.utils.priority.nPriorityServo;
 public class Intake {
     private final Robot robot;
     public final PriorityMotor intakeMotor;
+    public final nPriorityServo flowerMechanismServo;
     //public final nPriorityServo rindex, lindex;
 
-    private boolean requestIntake = false, requestShoot = false, requestOff = false, reversed = false;
+    private boolean requestIntake = false, requestShoot = false, requestOff = false, requestPollenRetrieval = false, reversed = false;
 
     public static double intakeRollerPower = 1.0, intakeFeedPower = 0.4, shootRollerPower = 1.0, shootFeedPower = 0.8;
+    public static double flowerMechMaxPos = 0.85, flowerMechMinPos = 0.10; // placeholder
+    public static double flowerMechDownPos = flowerMechMinPos;
+    public static double flowerMechUpPos = flowerMechMaxPos;
     public static long intakeReverseDuration = 200;
 
     public enum State {
         IDLE,
         INTAKE,
+        POLLEN_RETRIEVAL,
         TEST
     }
 
@@ -40,6 +45,13 @@ public class Intake {
             new double[] {1}, robot.sensors
         );
 
+        flowerMechanismServo = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, "flowerMechanism")},
+                "flowerMechanism", nPriorityServo.ServoType.AXON_MINI,
+                flowerMechMinPos, flowerMechMaxPos, flowerMechUpPos,
+                new boolean[] {false},
+                6, 7
+        );
+
         robot.hardwareQueue.addDevices(intakeMotor);
     }
 
@@ -52,10 +64,16 @@ public class Intake {
                 requestOff = false;
 
                 intakeMotor.setTargetPower(System.currentTimeMillis() < turnedOffTime + intakeReverseDuration ? -intakeFeedPower : 0.0);
+                flowerMechanismServo.setTargetAngle(flowerMechUpPos);
 
                 if (requestIntake) {
                     requestIntake = false;
                     state = State.INTAKE;
+                }
+
+                if(requestPollenRetrieval) {
+                    requestPollenRetrieval = false;
+                    state = State.POLLEN_RETRIEVAL;
                 }
 
                 break;
@@ -64,6 +82,25 @@ public class Intake {
                 requestIntake = false;
 
                 intakeMotor.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
+
+                if(requestPollenRetrieval) {
+                    requestPollenRetrieval = false;
+                    state = State.POLLEN_RETRIEVAL;
+                }
+
+                if (requestOff) {
+                    requestOff = false;
+                    requestIntake = false;
+                    requestShoot = false;
+                    state = State.IDLE;
+                }
+
+                break;
+            }
+            case POLLEN_RETRIEVAL: {
+                requestPollenRetrieval = false;
+                intakeMotor.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
+                flowerMechanismServo.setTargetAngle(flowerMechDownPos);
 
                 if (requestOff) {
                     requestOff = false;
@@ -84,6 +121,10 @@ public class Intake {
 
     public void reqIntake (boolean req) {
         requestIntake = req;
+    }
+
+    public void reqPollenRetrieval(boolean req) {
+        requestPollenRetrieval = req;
     }
 
     public void reqShoot (boolean req) {
