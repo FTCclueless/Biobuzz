@@ -63,7 +63,7 @@ public class Intake {
             case IDLE: {
                 requestOff = false;
 
-                intakeMotor.setTargetPower(System.currentTimeMillis() < turnedOffTime + intakeReverseDuration ? -intakeFeedPower : 0.0);
+                intakeMotor.setTargetPower(0.0);
                 flowerMechanismServo.setTargetAngle(flowerMechUpPos);
 
                 if (requestIntake) {
@@ -131,7 +131,7 @@ public class Intake {
         requestShoot = req;
     }
 
-    public void reqOff (boolean req) { requestOff = req; turnedOffTime = System.currentTimeMillis(); }
+    public void reqOff (boolean req) { requestOff = req; }
 
     public void setRollerDirection(boolean reversed) { this.reversed = reversed; }
 
