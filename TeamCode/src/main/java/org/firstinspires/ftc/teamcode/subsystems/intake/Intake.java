@@ -1,13 +1,19 @@
 package org.firstinspires.ftc.teamcode.subsystems.intake;
 
 import com.acmerobotics.dashboard.config.Config;
+import com.qualcomm.robotcore.hardware.AnalogInput;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.Robot;
+import org.firstinspires.ftc.teamcode.utils.Encoder;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
+import org.firstinspires.ftc.teamcode.utils.MathUtil;
+import org.firstinspires.ftc.teamcode.utils.PID;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
+import org.firstinspires.ftc.teamcode.utils.priority.PriorityCRServo;
 import org.firstinspires.ftc.teamcode.utils.priority.PriorityMotor;
 import org.firstinspires.ftc.teamcode.utils.priority.nPriorityServo;
 
@@ -15,21 +21,34 @@ import org.firstinspires.ftc.teamcode.utils.priority.nPriorityServo;
 public class Intake {
     private final Robot robot;
     public final PriorityMotor intakeMotor;
-    public final nPriorityServo flowerMechanismServo;
+    public final PriorityCRServo flowerMechanismServo;
+    public final nPriorityServo lintake, rintake;
     //public final nPriorityServo rindex, lindex;
+
+    private double dFlowerMechEncoder = 0.0;
+    private double lastFlowerMechEncoder = 0.0;
 
     private boolean requestIntake = false, requestShoot = false, requestOff = false, requestPollenRetrieval = false, reversed = false;
 
     public static double intakeRollerPower = 1.0, intakeFeedPower = 0.4, shootRollerPower = 1.0, shootFeedPower = 0.8;
-    public static double flowerMechMaxPos = 0.85, flowerMechMinPos = 0.10; // placeholder
-    public static double flowerMechDownPos = flowerMechMinPos;
-    public static double flowerMechUpPos = flowerMechMaxPos;
+
+    public static double flowerMechDownPosition = 4.5;
+    public static double flowerMechUpPosition = 0.0;
+    public static double flowerMechEncoderMaxVoltage = 3.3;
+    public static double flowerMechPositionThreshold = 0.1;
+    public static PID flowerMechPID = new PID(1, 0, 0); // TODO: Tune
+
+    public static double intakePivotUpPosition = 0.0;
+    public static double intakePivotDownPosition = 1.6;
+
     public static long intakeReverseDuration = 200;
 
     public enum State {
         IDLE,
         INTAKE,
-        POLLEN_RETRIEVAL,
+        POLLEN_RETRIEVAL_START,
+        POLLEN_RETRIEVAL_INTAKE,
+        POLLEN_RETRIEVAL_END,
         TEST
     }
 
@@ -40,31 +59,82 @@ public class Intake {
 
 
         intakeMotor = new PriorityMotor(
-            new DcMotorEx[] {robot.hardwareMap.get(DcMotorEx.class, "intake")},
+            new DcMotorEx[] {robot.hardwareMap.get(DcMotorEx.class, "intake"), robot.hardwareMap.get(DcMotorEx.class, "intake2")},
             "intake", 2, 4,
-            new double[] {1}, robot.sensors
+            new double[] {1, 1}, robot.sensors
         );
 
-        flowerMechanismServo = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, "flowerMechanism")},
-                "flowerMechanism", nPriorityServo.ServoType.AXON_MINI,
-                flowerMechMinPos, flowerMechMaxPos, flowerMechUpPos,
+        flowerMechanismServo = new PriorityCRServo(new CRServo[]{robot.hardwareMap.get(CRServo.class, "flowerMechanism")},
+                "flowerMechanism", PriorityCRServo.ServoType.AXON_MINI,
                 new boolean[] {false},
                 6, 7
         );
 
-        robot.hardwareQueue.addDevices(intakeMotor);
+        lintake = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, "leftIntakePivot")}, "leftIntakePivot", nPriorityServo.ServoType.AXON_MINI,
+                intakePivotUpPosition, intakePivotDownPosition, intakePivotUpPosition, new boolean[] {false}, 6, 7);
+        rintake = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, "rightIntakePivot")}, "rightIntakePivot", nPriorityServo.ServoType.AXON_MINI,
+                intakePivotUpPosition, intakePivotDownPosition, intakePivotUpPosition, new boolean[] {false}, 6, 7);
+        robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, lintake, rintake);
     }
 
-    long turnedOffTime = 0;
+    private double encoderVoltageToRad(double v)
+    {
+        return (v/flowerMechEncoderMaxVoltage)*2*Math.PI;
+    }
+
+    private void runIntake()
+    {
+        boolean forward = Math.signum(robot.drivetrain.getLastMoveVector().y) == 1.0;
+
+        if(forward)
+        {
+            rintake.setTargetAngle(intakePivotDownPosition);
+            lintake.setTargetAngle(intakePivotUpPosition);
+        }
+        else
+        {
+            lintake.setTargetAngle(intakePivotDownPosition);
+            rintake.setTargetAngle(intakePivotUpPosition);
+        }
+        intakeMotor.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
+    }
+
+    private void goToTargetFlowerMech(boolean up, State target)
+    {
+        double targetPos = up ? flowerMechUpPosition : flowerMechDownPosition;
+        double resetSign = up ? -1.0 : 1.0;
+        boolean resetExpr = resetSign == -1.0 ? dFlowerMechEncoder > 0.0 : dFlowerMechEncoder < 0.0;
+
+        dFlowerMechEncoder = encoderVoltageToRad(robot.sensors.getFlowerMechanismEncoderVoltageRaw())-lastFlowerMechEncoder;
+
+        if(resetExpr)
+        {
+            // the encoder reset
+            dFlowerMechEncoder += 2*Math.PI*resetSign;
+        }
+
+        lastFlowerMechEncoder += dFlowerMechEncoder;
+        double err = targetPos-lastFlowerMechEncoder;
+
+        if(Math.abs(err) < flowerMechPositionThreshold)
+        {
+            state = target;
+            return;
+        }
+
+        double power = flowerMechPID.update(err, -1.0, 1.0);
+        flowerMechanismServo.setTargetPower(power);
+    }
 
     public void update() {
-        setRollerDirection(Math.signum(this.robot.drivetrain.getLastMoveVector().y) == -1.0);
         switch (state) {
             case IDLE: {
                 requestOff = false;
 
                 intakeMotor.setTargetPower(0.0);
-                flowerMechanismServo.setTargetAngle(flowerMechUpPos);
+                flowerMechanismServo.setTargetPower(0.0);
+                lintake.setTargetAngle(intakePivotUpPosition);
+                rintake.setTargetAngle(intakePivotUpPosition);
 
                 if (requestIntake) {
                     requestIntake = false;
@@ -73,42 +143,49 @@ public class Intake {
 
                 if(requestPollenRetrieval) {
                     requestPollenRetrieval = false;
-                    state = State.POLLEN_RETRIEVAL;
+                    state = State.POLLEN_RETRIEVAL_START;
+                    lastFlowerMechEncoder = encoderVoltageToRad(robot.sensors.getFlowerMechanismEncoderVoltageRaw()); // Assume the encoder starts at 0 every time
                 }
 
                 break;
             }
             case INTAKE: {
                 requestIntake = false;
-
-                intakeMotor.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
+                runIntake();
 
                 if(requestPollenRetrieval) {
                     requestPollenRetrieval = false;
-                    state = State.POLLEN_RETRIEVAL;
+                    state = State.POLLEN_RETRIEVAL_START;
+                    lastFlowerMechEncoder = encoderVoltageToRad(robot.sensors.getFlowerMechanismEncoderVoltageRaw()); // Assume the encoder starts at 0 every time
                 }
 
                 if (requestOff) {
-                    requestOff = false;
-                    requestIntake = false;
-                    requestShoot = false;
                     state = State.IDLE;
+                    requestIntake = false;
+                    requestOff = false;
+                    requestShoot = false;
+                    requestPollenRetrieval = false;
                 }
 
                 break;
             }
-            case POLLEN_RETRIEVAL: {
+            case POLLEN_RETRIEVAL_START: {
                 requestPollenRetrieval = false;
-                intakeMotor.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
-                flowerMechanismServo.setTargetAngle(flowerMechDownPos);
-
+                goToTargetFlowerMech(false, State.POLLEN_RETRIEVAL_INTAKE);
+                break;
+            }
+            case POLLEN_RETRIEVAL_INTAKE: {
+                runIntake();
                 if (requestOff) {
-                    requestOff = false;
-                    requestIntake = false;
-                    requestShoot = false;
-                    state = State.IDLE;
+                    state = State.POLLEN_RETRIEVAL_END;
                 }
-
+            }
+            case POLLEN_RETRIEVAL_END: {
+                goToTargetFlowerMech(true, State.IDLE);
+                requestIntake = false;
+                requestOff = false;
+                requestShoot = false;
+                requestPollenRetrieval = false;
                 break;
             }
             case TEST: {

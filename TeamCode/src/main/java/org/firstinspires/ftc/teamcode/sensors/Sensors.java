@@ -46,9 +46,12 @@ public class Sensors {
     //private double turretAnalogEncoderVoltage;
     public static double turretAngleEncoderOffset = 0.0;
 
+    public static double flowerMechEncoderOffset = 0.0;
+
     private double lightSensorFilteredVoltage = 0;
     public static double lightSensorFilter = 0.5;
     public AnalogInput lightSensor0;
+    public AnalogInput intakeFlowerMechEncoder;
     public final LEDWrapper light0G, light0P;
     private boolean isGreen = false, isPurple = false;
 
@@ -60,6 +63,8 @@ public class Sensors {
     private long lastTurretSensorUpdatedTime = 0;
     private long lastColorSensorUpdatedTime = 0;
     private final VoltageSensor voltageSensor;
+
+
 
     public Sensors(Robot robot) {
         this.robot = robot;
@@ -74,6 +79,7 @@ public class Sensors {
         //resetTurretAngleEncoder = true;
 
         lightSensor0 = robot.hardwareMap.get(AnalogInput.class, "lightSensor0");
+        intakeFlowerMechEncoder = robot.hardwareMap.get(AnalogInput.class, "intakeFlowerMechEncoder");
         light0G = new LEDWrapper(robot.hardwareMap, "light0G");
         light0P = new LEDWrapper(robot.hardwareMap, "light0P");
 
@@ -181,6 +187,12 @@ public class Sensors {
     public double getVoltage() {
         return voltage;
     }
+
+    public double getFlowerMechanismEncoderVoltageRaw()
+    {
+        return intakeFlowerMechEncoder.getVoltage();
+    }
+
 
     /**
      * Clips a turret angle
