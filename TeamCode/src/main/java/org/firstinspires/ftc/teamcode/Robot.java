@@ -55,7 +55,6 @@ public class Robot {
         intake = new Intake(this);
         shooter = new Shooter(this);
         park = new Park(this);
-        sensors.resetTurretAngleEncoder();
     }
 
     public void update() {

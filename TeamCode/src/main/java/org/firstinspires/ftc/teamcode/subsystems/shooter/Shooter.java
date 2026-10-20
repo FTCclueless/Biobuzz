@@ -181,11 +181,6 @@ public class Shooter {
                 flywheel.setTargetVelocity(forceUpdateVelBool ? forceUpdateVel : minFlywheelVelocity);
                 setHoodAngle(targetHoodAngle);
 
-                if (Globals.RUNMODE != RunMode.AUTO) {
-                    robot.sensors.light0G.set(true);
-                    robot.sensors.light0P.set(true);
-                }
-
                 if (shootRequest /* && (isRobotInZone(0,0,-72,72,-72,-72) || isRobotInZone(48,0,72,24,72,-24)) */) {
                     setShooterBlocker(false);
                     if (flywheelBlocker.inPosition()) {
