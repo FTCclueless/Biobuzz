@@ -80,6 +80,10 @@ public class Shooter {
     double sotmFilteredAccelY = 0;
 
     public static boolean autoShootIfInZone = false;
+
+    public static boolean AUTO_STOP_WHEN_EMPTY = true;
+    public static long EMPTY_GRACE_MS = 300;
+    private long emptySince = -1;
     public static boolean forceUpdateVelBool = false;
     public static double forceUpdateVel;
 
@@ -217,7 +221,21 @@ public class Shooter {
                 flywheel.setTargetVelocity(minFlywheelVelocity);
                 setHoodAngle(targetHoodAngle);
 
-                if (stopRequest) {
+                boolean empty = false;
+                if (AUTO_STOP_WHEN_EMPTY && robot.intake.getBallCount() == 0) {
+                    long now = System.currentTimeMillis();
+                    if (emptySince < 0) emptySince = now;
+                    empty = now - emptySince >= EMPTY_GRACE_MS;
+                } else {
+                    emptySince = -1;
+                }
+
+                if (empty) {
+                    emptySince = -1;
+                    state = State.IDLE;
+                    flywheel.setTargetVelocity(Dist.CLOSE.flywheelVel);
+                    robot.intake.reqOff(true);
+                } else if (stopRequest) {
                     stopRequest = false;
                     shootRequest = false;
                     state = State.IDLE;
@@ -268,7 +286,6 @@ public class Shooter {
         TelemetryUtil.packet.put("Shooter : state", this.state);
         TelemetryUtil.packet.put("Shooter : Balltarget", ballTarget.toString());
         TelemetryUtil.packet.put("Shooter : goal distance", Math.hypot(ROBOT_POSITION.x - robot.shooter.ballTarget.x, ROBOT_POSITION.y - robot.shooter.ballTarget.y));
-
 
         LogUtil.shooterState.set(this.state.toString());
         LogUtil.hoodAngle.set(hood.getTargetAngle());
@@ -321,7 +338,6 @@ public class Shooter {
         }
     }
 
-
     public boolean atVel() { return flywheel.atVel(); }
     public boolean atVel(double thresh) { return flywheel.atVel(thresh); }
 
@@ -334,7 +350,6 @@ public class Shooter {
         MID(1.35, 520),
         FAR(1.3, 610),
         OFF(0.0, 0.0);
-
 
         private final double hoodAngle, flywheelVel;
 
@@ -354,9 +369,8 @@ public class Shooter {
     }
 
     public static boolean isRobotInZone(double x1, double y1, double x2, double y2, double x3, double y3) {
-
         //getting robot pose info
-        double theta = Math.toRadians(ROBOT_POSITION.heading);
+        double theta = ROBOT_POSITION.heading;
         double cosT = Math.cos(theta);
         double sinT = Math.sin(theta);
         double l = Globals.ROBOT_LENGTH;
@@ -424,5 +438,4 @@ public class Shooter {
         double virtualTurretAngle = Math.atan2(virtualY - ROBOT_POSITION.y, virtualX - ROBOT_POSITION.x);
         turret.setTargetAngle(virtualTurretAngle - ROBOT_POSITION.heading);
     }
-
 }
