@@ -143,8 +143,8 @@ Step 3 measures the real ones.
 
 ### Step 3 — Slip Test (Autonomous, group "test"), run TWICE
 
-Move the **rightRear drive encoder** back into the rightRear port first — `Sensors` reads the
-flywheel from that port, so the drive encoder has to be there for this test.
+It compares the rightRear drive motor's own encoder (wheel speed) against odometry (ground
+speed), so that motor's encoder cable must be plugged in.
 
 | Run | Gives you | Goes into |
 |---|---|---|
@@ -188,6 +188,30 @@ Sweeps one gain automatically and reports where it went unstable, then backs off
 `MARGIN_FRACTION`. Set `TARGET` to `CONTOUR`, `HEADING` or `ACCEL_LEAD`. It takes the gains it
 is not sweeping from `DriveConstants`.
 
+### Steps 6–7 the fast way — Flywheel Auto Tuner
+
+**Flywheel Auto Tuner** does the flywheel's whole characterize → tune → verify sequence in one
+run (about 2 minutes), with no pasting in between:
+
+1. **Characterize** — measures `kV`/`kA`/`kS` and `FF_TABLE`, and applies them live.
+2. **Sweep** — retries the closed loop at progressively stiffer `MAX_VELOCITY_ERROR`, scoring
+   each trial.
+3. **Choose** — the fastest trial that passed. If the next stiffer trial failed, the winner is
+   at the edge of stability, so it backs off one step to keep a margin.
+4. **Verify** — re-runs the test on the chosen setting.
+
+Results are **live immediately**, but Dashboard values reset on restart, so copy the printed
+lines into `Flywheel.java`. If you stop a run part way, the original constants are restored,
+so a half-finished sweep never leaves an untested gain active.
+
+Pass criteria are Dashboard settings: `MAX_OVERSHOOT_FRACTION`, `MAX_NOISE` (speed wander once
+settled — the number that matters most for a LUT shooter), and `MAX_STEADY_ERROR`. If the gain
+barely changes across the sweep, the result screen says so: the knob isn't what limits that
+wheel, and `kA` should be re-checked.
+
+The servo turret has its own automatic tester, the Turret Calibrator (Step 8). Servos run their
+own position loop, so there are no turret gains to sweep.
+
 ### Step 6 — Flywheel Characterizer (Autonomous, group "test")
 
 **Safety: the wheel spins to full speed. Load nothing, keep clear.**
@@ -216,89 +240,51 @@ Step-tests the closed loop and reports settle time, overshoot and steady-state e
 | Overshoots | Raise `MAX_VELOCITY_ERROR`, or lower `MAX_EFFORT` |
 | Slow to recover | Lower `MAX_VELOCITY_ERROR` until it starts to overshoot, then back off |
 
+### Step 8 — Turret Calibrator (Autonomous, group "test")
+
+The turret is three servos geared together, with an external encoder. Servos run their own
+position loop, so there is no LQR to tune; what needs measuring is how servo position maps to
+turret angle, and how much backlash the gears have.
+
+Set `Turret.TICKS_PER_TURRET_REV` **first** — every angle depends on it.
+
+1. **During init:** D-pad left/right (bumpers for bigger steps) until the turret points exactly
+   straight ahead, then press **A**.
+2. **Start:** it probes which way the servos turn the turret, sweeps toward −120°, comes back
+   up through the same points (that measures backlash), then does a short sweep toward +30°
+   planned from what it has learned so it stops well short of the +50° limit. The encoder is
+   checked after every move.
+
+| Gives you | Goes into |
+|---|---|
+| `ZERO_POSITION` | `Turret.ZERO_POSITION` |
+| `POSITION_PER_RADIAN` | `Turret.POSITION_PER_RADIAN` |
+| backlash (deg) | Should be under `MAX_TRIM` (4°) so encoder trim can correct it |
+
+It warns if the full −310°…+50° window doesn't fit in the servos' travel, if the points aren't
+on a straight line (slipping gears, or wrong `TICKS_PER_TURRET_REV`), or if backlash is too
+large for trim.
+
+### Step 9 — Intake Sensor Test (TeleOp, group "test")
+
+Live readout of both entrance sensors and the ball count, with manual intake control.
+
+- **`PRESENT_CM`:** hold a POLLEN at each entrance and read the distance, then read it with the
+  entrance empty. Set `PRESENT_CM` between the two, nearer the ball reading. Use POLLEN, not
+  NECTAR: it's smaller, so it reads farther away. (Beam-break sensors skip this; check
+  `BEAM_ACTIVE_LOW` instead.)
+- **Color** (color-capable sensors only): hold each color at an entrance and check it reads
+  YELLOW / RED / BLUE. Opponent NECTAR is rejected automatically (G408).
+- **The 4-ball limit:** intake with A and watch `BALLS HELD`. At 4 both pivots lift and the
+  motors stop; a 5th that gets in is reversed straight back out.
+- **Pollen retrieval:** D-pad up runs the flower mechanism down, intakes, and B brings it back up.
+
 ---
 
 ## Part 3 — Every variable, and where it comes from
 
-### DriveConstants — limits (what the planner is allowed to ask for)
-
-| Variable | Meaning | Source |
-|---|---|---|
-| `V_FORWARD` | Top forward speed, in/s | Drive Characterizer |
-| `V_STRAFE` | Top strafe speed, in/s | Drive Characterizer |
-| `A_FORWARD` | Forward traction limit, in/s² | Slip Test, `STRAFE=false` |
-| `A_STRAFE` | Strafe traction limit, in/s² | Slip Test, `STRAFE=true` |
-| `STALL_RATIO` | Push from standstill vs at top speed | 3-4; rarely changed |
-| `SAFETY` | Fraction of limits to plan against | Lower it if saturated |
-
-### DriveConstants — geometry
-
-| Variable | Meaning | Source |
-|---|---|---|
-| `TRACK_WIDTH` | Left-to-right wheel distance, in | Tape measure |
-| `WHEEL_BASE` | Front-to-back wheel distance, in | Tape measure |
-| `MAX_WHEEL_SPEED` | One wheel at full power, in/s | Drive Characterizer |
-
-### DriveConstants — follower gains
-
-| Variable | What it fixes | Source |
-|---|---|---|
-| `CONTOUR_GAIN` | Sideways drift off the path | Pathing Tuner |
-| `LAG_GAIN` | Falling behind along the path | Pathing Tuner |
-| `HEADING_GAIN` | Pointing the wrong way | Pathing Tuner |
-| `ACCEL_LEAD` | Lag during acceleration only | Pathing Tuner |
-| `FORWARD_GAIN` | Scales forward commands | Leave at 1.0 |
-| `STRAFE_GAIN` | Mecanum sideways slip | Drive Characterizer |
-| `GVF_CONTOUR_GAIN` | How hard the vector field steers back | Rarely changed |
-| `GVF_LAG_GAIN` | Vector-field catch-up | Rarely changed |
-| `START_VELOCITY_FLOOR` | Won't break static friction at the start | Raise if it stalls starting |
-| `POSITION_TOLERANCE` | How close counts as arrived, in | Your accuracy needs |
-
-### DriveConstants — point-to-point PID (`goToPoint`, not trajectories)
-
-| Variable | Meaning |
-|---|---|
-| `xPID`, `yPID` | Translation, robot-relative |
-| `turnPID`, `hPID` | Rotation |
-| `TURN_K_STATIC` | Constant power to beat turning friction |
-| `X_THRESH`, `Y_THRESH`, `H_THRESH` | Arrival window |
-| `WAYPOINT_THRESH` | Looser window for drive-through points |
-
-### Flywheel
-
-| Variable | Meaning | Source |
-|---|---|---|
-| `kV` | Volts per in/s | Flywheel Characterizer |
-| `kA` | Volts per in/s² | Flywheel Characterizer |
-| `kS` | Volts to overcome friction | Flywheel Characterizer |
-| `MAX_VELOCITY_ERROR` | Error you accept before spending MAX_EFFORT | Flywheel Tuner |
-| `MAX_EFFORT` | Volts available to feedback | Flywheel Tuner |
-| `MAX_SPIN_UP_ACCEL` | Ramp limit, stops belt skip | Lower if belts skip |
-| `AT_VEL_THRESH` | Error within which `atVel()` says ready | Shot accuracy |
-
-### Feedforward table (Flywheel.FF_TABLE)
-
-The LUT idea applied to the controller itself. `kV`/`kS` assume volts rise in a straight line
-with speed; real flywheels bend away from that at high speed because air drag is not linear.
-`FF_TABLE` stores measured volts at each measured speed and interpolates between them, exactly
-like `ShotTable2` does for distance.
-
-- Empty table = linear kV/kS model. A fine starting point.
-- Filled = the table supplies the feedforward, the LQR still corrects the remainder, and `kA`
-  still supplies the acceleration term while the reference ramps.
-- Set `USE_FF_TABLE = false` to force the linear model for comparison.
-- Telemetry `Flywheel : FF source` reads 1 when the table is in use.
-
-Fill it from the Flywheel Characterizer's paste-ready lines, using speeds that cover your
-`ShotTable2` range.
-
-### Not in DriveConstants on purpose
-
-Localizer and vision fusion (`nMergeLocalizer`, `RobotEKF`) have their own Dashboard panels.
-They are a separate tuning problem, and mixing them in would make one giant panel nobody can
-navigate.
-
----
+See **[parameters.md](parameters.md)**: every tunable value, what it does, how it gets set, and
+every hardware name the code needs. It's kept in one place so it can't drift out of date.
 
 ## Remember
 

@@ -66,7 +66,7 @@ Essentially the whole substrate. Do not rewrite these:
 
 - `subsystems/drive/**` — GVF pathing, Bezier/spline geometry, min-curvature
   optimizer, velocity profiling, friction ellipse, slip detection.
-- `subsystems/drive/localizers/**` — Pinpoint, EKF, `nMergeLocalizer`.
+- `subsystems/drive/localizers/**` — pure Pinpoint odometry (`PinpointLocalizer`).
 - `control/**` — LQR, motion profiles, matrix math, state prediction.
 - `utils/**` and `utils/priority/**` — the hardware queue and priority
   device scheduling are season-agnostic and expensive to rebuild.
@@ -107,7 +107,7 @@ the old two-tag layout. Changes:
    cell is upward-facing for each alliance, from tag pose/orientation. Expose
    `hiveState(alliance)`, `tipCount`, and a debounced `isTipping` flag so the
    shooter holds fire during a flip (G417).
-3. Tag-to-robot-pose feed into `nMergeLocalizer` needs new tag geometry — the
+3. A tag-to-robot-pose correction (if added on top of Pinpoint) needs new tag geometry — the
    tags are now on a *moving* structure, so a tag pose is only a valid
    localization fix once the hive state is known and settled. Gate the vision
    correction on `!isTipping`.
