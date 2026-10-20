@@ -47,6 +47,20 @@ public final class MecanumKinematics {
         return out;
     }
 
+    public double[] toPowers(double vx, double vy, double omega, double staticPower,
+                             double deadband) {
+        double[] w = toWheelSpeeds(vx, vy, omega);
+        double peak = maxWheelSpeed;
+        for (double x : w) peak = Math.max(peak, Math.abs(x));
+        double[] out = new double[4];
+        for (int i = 0; i < 4; i++) {
+            double mag = Math.abs(w[i]);
+            out[i] = mag < deadband ? 0
+                    : Math.signum(w[i]) * (staticPower + (1 - staticPower) * mag / peak);
+        }
+        return out;
+    }
+
     public double saturation(double vx, double vy, double omega) {
         double[] w = toWheelSpeeds(vx, vy, omega);
         double peak = 0;

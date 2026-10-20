@@ -17,6 +17,7 @@ public final class SimChassis {
     public double strafeEfficiency = 0.88;
     public double maxAngularAccel = 14.0;
     public double nominalVoltage = 12.5;
+    public double staticPower = 0.0;
 
     private double voltage = 12.5;
     private double tractionScale = 1.0;
@@ -51,10 +52,10 @@ public final class SimChassis {
 
         double voltageFactor = voltage / nominalVoltage;
         double wheelFree = kinematics.maxWheelSpeed() * voltageFactor;
-        double fl = Utils.minMaxClip(powers[0], -1, 1) * wheelFree;
-        double fr = Utils.minMaxClip(powers[1], -1, 1) * wheelFree;
-        double bl = Utils.minMaxClip(powers[2], -1, 1) * wheelFree;
-        double br = Utils.minMaxClip(powers[3], -1, 1) * wheelFree;
+        double fl = afterFriction(powers[0]) * wheelFree;
+        double fr = afterFriction(powers[1]) * wheelFree;
+        double bl = afterFriction(powers[2]) * wheelFree;
+        double br = afterFriction(powers[3]) * wheelFree;
 
         double[] want = kinematics.toTwist(fl, fr, bl, br);
         double wantVx = want[0];
@@ -110,6 +111,13 @@ public final class SimChassis {
         x += dxBody * c - dyBody * s;
         y += dxBody * s + dyBody * c;
         heading = Utils.headingClip(heading + dtheta);
+    }
+
+    private double afterFriction(double power) {
+        double p = Utils.minMaxClip(power, -1, 1);
+        double mag = Math.abs(p);
+        if (mag <= staticPower) return 0;
+        return Math.signum(p) * (mag - staticPower) / (1 - staticPower);
     }
 
     public Pose2d truePose() { return new Pose2d(x, y, heading); }

@@ -30,7 +30,6 @@ public class PathingTuner extends LinearOpMode {
     public static int SHAPE = 0;
     public static double LENGTH = 48.0;
 
-    // Limits, geometry, and gains live in DriveConstants -- edit them there in Dashboard.
     public static boolean OPEN_LOOP = true;
 
     @Override
@@ -39,6 +38,7 @@ public class PathingTuner extends LinearOpMode {
 
         Robot robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);
+        robot.shooter.setManual(true);
 
         FrictionEllipse ellipse = DriveConstants.ellipse();
 
@@ -86,8 +86,6 @@ public class PathingTuner extends LinearOpMode {
             TelemetryUtil.packet.put("Tuner : vy", cmd.vy);
             TelemetryUtil.packet.put("Tuner : omega", cmd.omega);
 
-            // Planned vs. actual along-track profile. Graph each pair together in Dashboard.
-            // Actual values are the localizer's global velocity/accel projected onto the path tangent.
             Vector2 tangent = traj.path().tangent(cmd.s);
             TelemetryUtil.packet.put("Profile : planned v", traj.profile().velocity(cmd.s));
             TelemetryUtil.packet.put("Profile : actual v",

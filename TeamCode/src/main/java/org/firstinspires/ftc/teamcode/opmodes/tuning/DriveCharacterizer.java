@@ -7,7 +7,6 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Robot;
-import org.firstinspires.ftc.teamcode.subsystems.drive.localizers.MergeLocalizer;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 import org.firstinspires.ftc.teamcode.utils.RunMode;
@@ -35,8 +34,7 @@ public class DriveCharacterizer extends LinearOpMode {
         Globals.RUNMODE = RunMode.AUTO;
         robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);
-
-        MergeLocalizer.useCamera = false;
+        robot.shooter.setManual(true);
 
         telemetry.addLine("Drive Characterizer");
         telemetry.addLine();
@@ -187,6 +185,15 @@ public class DriveCharacterizer extends LinearOpMode {
         return den < 1e-12 ? 0 : num / den;
     }
 
+    private static double staticPower(Run low, Run high) {
+        double dp = high.power - low.power;
+        if (Math.abs(dp) < 1e-6) return 0;
+        double k = (Math.abs(high.steadyVelocity) - Math.abs(low.steadyVelocity)) / dp;
+        if (k <= 1e-6) return 0;
+        double intercept = Math.abs(high.steadyVelocity) - k * high.power;
+        return Math.max(0, -intercept / k);
+    }
+
     private static double freeSpeed(Run low, Run high) {
         double dp = high.power - low.power;
         if (Math.abs(dp) < 1e-6) return Math.abs(high.steadyVelocity);
@@ -247,6 +254,7 @@ public class DriveCharacterizer extends LinearOpMode {
             telemetry.addLine(String.format(Locale.US, "A_FORWARD  = %.1f;   // achieved, not the traction limit -- use SlipTest", aForward));
             telemetry.addLine(String.format(Locale.US, "A_STRAFE   = %.1f;   // achieved, not the traction limit -- use SlipTest", aStrafe));
             telemetry.addLine(String.format(Locale.US, "MAX_WHEEL_SPEED = %.1f;", maxWheelSpeed));
+            telemetry.addLine(String.format(Locale.US, "STATIC_POWER = %.3f;", staticPower(fwdLow, fwdHigh)));
             telemetry.addLine();
             telemetry.addLine("=== starting gains, then tune up ===");
             telemetry.addLine(String.format(Locale.US, "HEADING_GAIN = %.2f;", headingStart));

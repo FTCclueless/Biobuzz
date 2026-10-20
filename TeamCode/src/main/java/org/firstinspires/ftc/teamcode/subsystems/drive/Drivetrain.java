@@ -15,8 +15,7 @@ import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigu
 
 import org.firstinspires.ftc.teamcode.Robot;
 import org.firstinspires.ftc.teamcode.sensors.Sensors;
-import org.firstinspires.ftc.teamcode.subsystems.drive.localizers.Localizer;
-import org.firstinspires.ftc.teamcode.subsystems.drive.localizers.nMergeLocalizer;
+import org.firstinspires.ftc.teamcode.subsystems.drive.localizers.PinpointLocalizer;
 import org.firstinspires.ftc.teamcode.utils.AngleUtil;
 import org.firstinspires.ftc.teamcode.utils.DashboardUtil;
 import org.firstinspires.ftc.teamcode.utils.Globals;
@@ -56,8 +55,7 @@ public class Drivetrain {
     private final List<PriorityMotor> motors;
 
     public Vision vision;
-    public Localizer localizer;
-    public nMergeLocalizer nMergeLocalizer;
+    public PinpointLocalizer localizer;
     private final HardwareQueue hardwareQueue;
     private final Sensors sensors;
 
@@ -102,8 +100,7 @@ public class Drivetrain {
         configureMotors();
         setMinPowersToOvercomeFriction(1.0);
 
-        localizer = new Localizer (sensors, this, "#ff0000", "#ffffff");
-        nMergeLocalizer = new nMergeLocalizer (hardwareMap, sensors, this, "#0000ff", "#ff00ff");
+        localizer = new PinpointLocalizer(hardwareMap);
     }
 
     public void configureMotors() {
@@ -162,8 +159,7 @@ public class Drivetrain {
     }
 
     public void setPoseEstimate(Pose2d pose2d) {
-        localizer.setPoseEstimate(pose2d);
-        nMergeLocalizer.setPoseEstimate(pose2d);
+        localizer.setPose(pose2d);
         LogUtil.drivePositionReset = true;
     }
 
@@ -172,7 +168,7 @@ public class Drivetrain {
     }
 
     private Pose2d targetPoint = new Pose2d (0, 0, 0);
-    // Point-to-point PIDs and thresholds live in DriveConstants.
+
     public static double xError = 0.0, yError = 0.0, hError = 0.0;
 
     public void update() {
@@ -212,9 +208,14 @@ public class Drivetrain {
                 TelemetryUtil.packet.put("Path : lag error", cmd.lagError);
                 TelemetryUtil.packet.put("Path : saturation", cmd.saturation);
 
-                if (trajectoryFollower.isFinished() || trajectoryFollower.hasFaulted()) {
+                double followSeconds = (System.nanoTime() - trajectoryStartNanos) / 1e9;
+                boolean timedOut = followSeconds > trajectoryFollower.trajectory().duration()
+                        * DriveConstants.PATH_TIMEOUT_FACTOR + DriveConstants.PATH_TIMEOUT_EXTRA;
+                if (trajectoryFollower.isFinished() || trajectoryFollower.hasFaulted() || timedOut) {
                     if (trajectoryFollower.hasFaulted()) {
                         Log.e("Drivetrain", "path follower fault: " + trajectoryFollower.fault());
+                    } else if (timedOut) {
+                        Log.w("Drivetrain", "path timed out; finishing with point-to-point PID");
                     }
                     stopAllMotors();
                     if (trajectoryEndPose != null) this.targetPoint = trajectoryEndPose;
@@ -260,6 +261,7 @@ public class Drivetrain {
 
     private double maxPower = 1.0;
     private boolean isWaypoint = false;
+    private long trajectoryStartNanos = 0;
     public void followTrajectory(Trajectory trajectory) {
         kinematics = DriveConstants.kinematics();
         trajectoryEndPose = trajectory.poseAt(trajectory.length());
@@ -268,6 +270,7 @@ public class Drivetrain {
         trajectory.resetMarkers();
         trajectoryDrawPoints = DashboardUtil.samplePath(trajectory.path());
         trajectoryFollower = DriveConstants.follower(trajectory, kinematics);
+        trajectoryStartNanos = System.nanoTime();
         state = State.FOLLOW_TRAJECTORY;
     }
 

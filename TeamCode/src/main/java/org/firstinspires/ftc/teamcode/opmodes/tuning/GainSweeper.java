@@ -12,7 +12,6 @@ import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.MecanumKin
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.PathFollower;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.FrictionEllipse;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.Trajectory;
-import org.firstinspires.ftc.teamcode.subsystems.drive.localizers.MergeLocalizer;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 import org.firstinspires.ftc.teamcode.utils.RunMode;
@@ -39,7 +38,6 @@ public class GainSweeper extends LinearOpMode {
 
     public static int SHAPE = PathShapes.STRAIGHT;
     public static double LENGTH = 48.0;
-    // Limits, geometry, and the gains NOT being swept all come from DriveConstants.
 
     private Robot robot;
     private FrictionEllipse ellipse;
@@ -56,8 +54,7 @@ public class GainSweeper extends LinearOpMode {
         Globals.RUNMODE = RunMode.AUTO;
         robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);
-
-        MergeLocalizer.useCamera = false;
+        robot.shooter.setManual(true);
 
         ellipse = DriveConstants.ellipse();
         kinematics = DriveConstants.kinematics();

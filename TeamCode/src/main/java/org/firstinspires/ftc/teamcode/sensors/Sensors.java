@@ -31,7 +31,6 @@ public class Sensors {
     public double loopTime;
     private long currentTime;
 
-    private final int[] odoWheelPositions = {0, 0, 0};
 
     // Enocder Resolution: 28 PPR
     private double flywheelVelocity = 0;
@@ -102,22 +101,11 @@ public class Sensors {
         light0G.update();
         light0P.update();
 
-        odoWheelPositions[0] = robot.drivetrain.leftFront.motor[0].getCurrentPosition(); // left
-        odoWheelPositions[1] = robot.drivetrain.rightFront.motor[0].getCurrentPosition(); // right
-        odoWheelPositions[2] = robot.drivetrain.leftRear.motor[0].getCurrentPosition(); // back
-
-        double flywheelAngularVel = robot.drivetrain.rightRear.motor[0].getVelocity() / 28.0 * 16 / 20; // rotations per second
-        flywheelVelocity = flywheelAngularVel * 3.0 * Math.PI;
-
-        robot.drivetrain.localizer.updateEncoders(odoWheelPositions);
-        robot.drivetrain.localizer.update();
-        robot.drivetrain.nMergeLocalizer.updateEncoders(odoWheelPositions);
-        robot.drivetrain.nMergeLocalizer.update();
-
-        ROBOT_POSITION = robot.drivetrain.nMergeLocalizer.getPoseEstimate();
-        ROBOT_VELOCITY = robot.drivetrain.nMergeLocalizer.getRelativePoseVelocity();
-        ROBOT_GLOBAL_VELOCITY = robot.drivetrain.nMergeLocalizer.getGlobalVelocity();
-        ROBOT_GLOBAL_ACCELERATION = robot.drivetrain.nMergeLocalizer.getGlobalAccel();
+        robot.drivetrain.localizer.update(loopTime);
+        ROBOT_POSITION = robot.drivetrain.localizer.getPose();
+        ROBOT_VELOCITY = robot.drivetrain.localizer.getRelativeVelocity();
+        ROBOT_GLOBAL_VELOCITY = robot.drivetrain.localizer.getGlobalVelocity();
+        ROBOT_GLOBAL_ACCELERATION = robot.drivetrain.localizer.getGlobalAccel();
 
         //if (currentTime - initialTime < 500_000_000) resetTurretAngleEncoder = true;
         if (currentTime - lastTurretSensorUpdatedTime > turretSensorUpdateTime * 1e6) {

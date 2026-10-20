@@ -8,7 +8,6 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Robot;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.SlipDetector;
-import org.firstinspires.ftc.teamcode.subsystems.drive.localizers.MergeLocalizer;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.RunMode;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
@@ -37,15 +36,14 @@ public class SlipTest extends LinearOpMode {
         Globals.RUNMODE = RunMode.AUTO;
         Robot robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);
-
-        MergeLocalizer.useCamera = false;
+        robot.shooter.setManual(true);
 
         SlipDetector slip = new SlipDetector(SLIP_RATIO, MIN_SPEED, 0.25);
         double inchesPerTick = Math.PI * WHEEL_DIAMETER / TICKS_PER_REV;
 
         telemetry.addLine("Slip Test");
         telemetry.addLine();
-        telemetry.addLine("Requires the rightRear DRIVE encoder in the rightRear port.");
+        telemetry.addLine("Reads the rightRear drive motor's own encoder for wheel speed.");
         telemetry.addLine("See the class comment before running.");
         telemetry.addData("axis", STRAFE ? "STRAFE -> A_STRAFE" : "FORWARD -> A_FORWARD");
         telemetry.addData("clear run needed (in)", "%.0f", MAX_TRAVEL);
@@ -159,7 +157,6 @@ public class SlipTest extends LinearOpMode {
             telemetry.addLine(STRAFE
                     ? "Now set STRAFE = false and run again for A_FORWARD."
                     : "Now set STRAFE = true and run again for A_STRAFE.");
-            telemetry.addLine("Then put the flywheel encoder back.");
             telemetry.update();
             robot.update();
         }

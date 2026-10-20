@@ -22,6 +22,8 @@ public final class PathFollower {
     private double maxReferenceLead = 6.0;
     private double positionTolerance = 1.0;
     private double headingTolerance = Math.toRadians(4);
+    private double staticPower = 0;
+    private double staticDeadband = 0.5;
 
     private final Trajectory trajectory;
     private final GuidingVectorField gvf;
@@ -61,6 +63,10 @@ public final class PathFollower {
     public PathFollower startVelocityFloor(double v) { this.startVelocityFloor = v; return this; }
 
     public PathFollower positionTolerance(double v) { this.positionTolerance = v; return this; }
+
+    public PathFollower staticPower(double v) { this.staticPower = v; return this; }
+
+    public PathFollower staticDeadband(double v) { this.staticDeadband = v; return this; }
 
     public PathFollower learner(IterativeLearner l) { this.learner = l; return this; }
 
@@ -162,7 +168,7 @@ public final class PathFollower {
                     "non-finite command at s=%.2f: vx=%f vy=%f omega=%f", s, vx, vy, omega));
         }
 
-        double[] powers = kinematics.toPowers(vx, vy, omega);
+        double[] powers = kinematics.toPowers(vx, vy, omega, staticPower, staticDeadband);
 
         if (learner != null) {
             double gvfLateral = gvf.lateralVelocityCommand(field, vRef);
@@ -173,7 +179,6 @@ public final class PathFollower {
         lastContourError = contourError;
         lastLagError = lagError;
 
-        // Hot path: compute this without allocating a Vector2 every loop.
         Vector2 endPoint = path.endPoint();
         double distToEnd = Math.hypot(pose.x - endPoint.x, pose.y - endPoint.y);
         double headErr = Math.abs(Utils.headingClip(
