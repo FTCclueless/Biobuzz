@@ -21,8 +21,8 @@ public abstract class BiobuzzField
     public static Pose2d BLUE_FLOWER_SIDE = new Pose2d(6*24-72, 4*24-72); // in
     public static Pose2d RED_GARDEN = new Pose2d(6*24-72, 12-72);
     public static Pose2d BLUE_GARDEN = new Pose2d(-72, 5*24+12-72);
-    public static Pose2d RED_START = new Pose2d(-72+Globals.ROBOT_WIDTH/2, -72+Globals.ROBOT_FORWARD_LENGTH/2);
-    public static Pose2d BLUE_START = new Pose2d(72-Globals.ROBOT_WIDTH/2, 72-Globals.ROBOT_FORWARD_LENGTH/2);
+    public static Pose2d RED_START = new Pose2d(-2*24+Globals.ROBOT_WIDTH/2, -72+Globals.ROBOT_FORWARD_LENGTH/2);
+    public static Pose2d BLUE_START = new Pose2d(24+Globals.ROBOT_WIDTH/2, 72-Globals.ROBOT_FORWARD_LENGTH/2);
 
     public static double RIM_HEIGHT = 21.5; // in
     public static double APERTURE = 4; // in
