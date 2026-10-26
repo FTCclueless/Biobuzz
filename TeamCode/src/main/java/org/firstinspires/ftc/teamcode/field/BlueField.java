@@ -28,5 +28,15 @@ public class BlueField extends BiobuzzField
     public int[] scoringAprilTags() {
         return BLUE_SCORING_APRIL_TAGS;
     }
+
+    @Override
+    public Pose2d garden() {
+        return BLUE_GARDEN;
+    }
+
+    @Override
+    public Pose2d start() {
+        return BLUE_START;
+    }
 }
 

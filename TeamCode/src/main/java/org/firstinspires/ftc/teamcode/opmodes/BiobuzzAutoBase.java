@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Robot;
 import org.firstinspires.ftc.teamcode.field.BiobuzzField;
+import org.firstinspires.ftc.teamcode.subsystems.drive.Drivetrain;
 import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.Trajectory;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.RunMode;
@@ -21,12 +22,19 @@ public class BiobuzzAutoBase extends LinearOpMode
         Globals.RUNMODE = RunMode.AUTO;
 
         robot = new Robot(hardwareMap);
+        robot.setStopChecker(this::isStopRequested);
+        robot.drivetrain.setPoseEstimate(BiobuzzField.field().start());
 
         while (opModeInInit()) {
             robot.update();
         }
 
         // example of field agnostic
-        //robot.drivetrain.goToPoint(BiobuzzField.field().flowerSide(), 1.0);
+        //robot.drivetrain.goToPoint(BiobuzzField.field().garden(), 1.0);
+    }
+
+    private void follow(Trajectory trajectory) {
+        robot.drivetrain.followTrajectory(trajectory);
+        robot.waitWhile(() -> robot.drivetrain.state != Drivetrain.State.WAIT);
     }
 }

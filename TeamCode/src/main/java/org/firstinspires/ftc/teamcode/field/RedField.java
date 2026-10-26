@@ -28,4 +28,14 @@ public class RedField extends BiobuzzField
     public int[] scoringAprilTags() {
         return RED_SCORING_APRIL_TAGS;
     }
+
+    @Override
+    public Pose2d garden() {
+        return RED_GARDEN;
+    }
+
+    @Override
+    public Pose2d start() {
+        return RED_START;
+    }
 }

@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.field;
 
+import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 
 public abstract class BiobuzzField
@@ -18,6 +19,10 @@ public abstract class BiobuzzField
     public static Pose2d RED_FLOWER_SIDE = new Pose2d(0-72, 2*24-72); // in
     public static Pose2d BLUE_FLOWER_ALLY_STATION = new Pose2d(2*24-72, 6*24-72); // in
     public static Pose2d BLUE_FLOWER_SIDE = new Pose2d(6*24-72, 4*24-72); // in
+    public static Pose2d RED_GARDEN = new Pose2d(6*24-72, 12-72);
+    public static Pose2d BLUE_GARDEN = new Pose2d(-72, 5*24+12-72);
+    public static Pose2d RED_START = new Pose2d(-72+Globals.ROBOT_WIDTH/2, -72+Globals.ROBOT_FORWARD_LENGTH/2);
+    public static Pose2d BLUE_START = new Pose2d(72-Globals.ROBOT_WIDTH/2, 72-Globals.ROBOT_FORWARD_LENGTH/2);
 
     public static double RIM_HEIGHT = 21.5; // in
     public static double APERTURE = 4; // in
@@ -36,6 +41,8 @@ public abstract class BiobuzzField
     public abstract Pose2d flowerSide();
     public abstract int[] audienceAprilTags();
     public abstract int[] scoringAprilTags();
+    public abstract Pose2d garden();
+    public abstract Pose2d start();
 
     public static void setSide(Side sideOfTheField)
     {
