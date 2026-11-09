@@ -11,12 +11,10 @@ import org.firstinspires.ftc.teamcode.photon.PhotonCore;
 import com.acmerobotics.dashboard.canvas.Canvas;
 
 import org.firstinspires.ftc.teamcode.sensors.Sensors;
-import org.firstinspires.ftc.teamcode.subsystems.park.Park;
+import org.firstinspires.ftc.teamcode.subsystems.park.Flower;
 import org.firstinspires.ftc.teamcode.subsystems.shooter.Shooter;
 import org.firstinspires.ftc.teamcode.subsystems.intake.Intake;
-import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
-import org.firstinspires.ftc.teamcode.utils.RunMode;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
 import org.firstinspires.ftc.teamcode.utils.priority.HardwareQueue;
 import org.firstinspires.ftc.teamcode.subsystems.drive.Drivetrain;
@@ -34,7 +32,7 @@ public class Robot {
     public Drivetrain drivetrain;
     public Intake intake;
     public Shooter shooter;
-    public Park park;
+    public Flower flower;
 
     private BooleanSupplier stopChecker = null;
     public ArrayList<Consumer<Canvas>> canvasDrawTasks = new ArrayList<>();
@@ -54,7 +52,7 @@ public class Robot {
         drivetrain = new Drivetrain(this, useVision ? new Vision(hardwareMap) : null);
         intake = new Intake(this);
         shooter = new Shooter(this);
-        park = new Park(this);
+        flower = new Flower(this);
     }
 
     public void update() {
@@ -67,7 +65,7 @@ public class Robot {
         drivetrain.update();
         intake.update();
         shooter.update();
-        park.update();
+        flower.update();
 
         if (this.stopChecker != null && this.stopChecker.getAsBoolean()) return;
 

@@ -8,24 +8,24 @@ import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
 import org.firstinspires.ftc.teamcode.utils.priority.PriorityCRServo;
 
 @Config
-public class Park {
-    private final PriorityCRServo park;
+public class Flower {
+    private final PriorityCRServo flower;
 
     private double power = 0;
 
-    public Park(Robot robot) {
-        park = new PriorityCRServo(
+    public Flower(Robot robot) {
+        flower = new PriorityCRServo(
             new CRServo[]{robot.hardwareMap.get(CRServo.class, "park1"), robot.hardwareMap.get(CRServo.class, "park2")},
             "park", PriorityCRServo.ServoType.AXON_MAX,
             new boolean[]{false, true},
             2, 2
         );
 
-        robot.hardwareQueue.addDevice(park);
+        robot.hardwareQueue.addDevice(flower);
     }
 
     public void update() {
-        park.setTargetPower(power);
+        flower.setTargetPower(power);
         TelemetryUtil.packet.put("Park : power", this.power);
     }
 
