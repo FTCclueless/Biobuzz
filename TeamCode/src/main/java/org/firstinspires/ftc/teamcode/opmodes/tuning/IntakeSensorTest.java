@@ -25,7 +25,7 @@ public class IntakeSensorTest extends LinearOpMode {
                     intake.hasColorSensor(s) ? " (color)" : "");
         }
         telemetry.addLine("A intake   B stop   X eject   Y feed   dpad up: pollen retrieval");
-        telemetry.addLine("dpad left/right: force side   bumpers: ball count -1 / +1");
+        telemetry.addLine("bumpers: ball count -1 / +1");
         telemetry.update();
 
         waitForStart();
@@ -38,8 +38,6 @@ public class IntakeSensorTest extends LinearOpMode {
             if (gamepad1.x) intake.eject();
             if (gamepad1.y) intake.feed();
             if (gamepad1.dpad_up && !lastUp) intake.startPollenRetrieval();
-            if (gamepad1.dpad_left) intake.setSide(Intake.Side.LEFT);
-            if (gamepad1.dpad_right) intake.setSide(Intake.Side.RIGHT);
             if (gamepad1.left_bumper && !lastLB) intake.setBallCount(intake.getBallCount() - 1);
             if (gamepad1.right_bumper && !lastRB) intake.setBallCount(intake.getBallCount() + 1);
             lastLB = gamepad1.left_bumper;
@@ -51,7 +49,7 @@ public class IntakeSensorTest extends LinearOpMode {
             robot.hardwareQueue.update();
             TelemetryUtil.sendTelemetry();
 
-            telemetry.addData("state / side", "%s / %s", intake.state, intake.getSide());
+            telemetry.addData("state", intake.state);
             telemetry.addData("BALLS HELD", "%d / %d%s", intake.getBallCount(), Intake.CAPACITY,
                     intake.isFull() ? "  FULL (intakes lifted)" : "");
             for (Intake.Side s : Intake.Side.values()) {

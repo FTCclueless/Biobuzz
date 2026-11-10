@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.subsystems.intake;
 
-import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_VELOCITY;
-
 import android.graphics.Color;
 
 import com.acmerobotics.dashboard.config.Config;
@@ -16,8 +14,6 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Robot;
-import org.firstinspires.ftc.teamcode.subsystems.drive.DriveConstants;
-import org.firstinspires.ftc.teamcode.subsystems.drive.Drivetrain;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
 import org.firstinspires.ftc.teamcode.utils.PID;
@@ -30,9 +26,7 @@ import org.firstinspires.ftc.teamcode.utils.priority.nPriorityServo;
 @Config
 public class Intake {
     public static final String INTAKE_MOTOR = "intake";
-    public static final String INTAKE_MOTOR_2 = "intake2";
-    public static final String LEFT_PIVOT = "leftIntakePivot";
-    public static final String RIGHT_PIVOT = "rightIntakePivot";
+    public static final String PIVOT = "intakePivot";
     public static final String FLOWER_SERVO = "flowerMechanism";
     public static final String FLOWER_ENCODER = "intakeFlowerMechEncoder";
     public static final String LEFT_SENSOR = "leftEntranceSensor";
@@ -64,7 +58,6 @@ public class Intake {
 
     public static double intakePivotUpPosition = 0.0;
     public static double intakePivotDownPosition = 1.6;
-    public static double SIDE_DEADBAND = 0.05;
 
     public static double flowerMechDownPosition = 4.5;
     public static double flowerMechUpPosition = 0.0;
@@ -90,19 +83,18 @@ public class Intake {
     private final Robot robot;
     public final PriorityMotor intakeMotor;
     public final PriorityCRServo flowerMechanismServo;
-    public final nPriorityServo lintake, rintake;
+    public final nPriorityServo pivot;
     private final AnalogInput flowerEncoder;
     private final EntranceSensor[] sensors = new EntranceSensor[2];
     private final BallCounter counter;
 
     public State state = State.IDLE;
-    private Side side = Side.LEFT;
     private boolean reversed = false;
     private int lastDirection = 0;
 
     private long rejectStart = -1;
     private String rejectReason = "";
-    private Side rejectSide = Side.LEFT;
+    private Side rejectSide = null;
 
     private double flowerAngle = 0;
     private double lastFlowerRaw = 0;
@@ -111,22 +103,18 @@ public class Intake {
         this.robot = robot;
 
         intakeMotor = new PriorityMotor(
-                new DcMotorEx[]{robot.hardwareMap.get(DcMotorEx.class, INTAKE_MOTOR),
-                        robot.hardwareMap.get(DcMotorEx.class, INTAKE_MOTOR_2)},
-                "intake", 2, 4, new double[]{1, 1}, robot.sensors);
+                new DcMotorEx[]{robot.hardwareMap.get(DcMotorEx.class, INTAKE_MOTOR)},
+                "intake", 2, 4, new double[]{1}, robot.sensors);
 
         flowerMechanismServo = new PriorityCRServo(
                 new CRServo[]{robot.hardwareMap.get(CRServo.class, FLOWER_SERVO)},
                 "flowerMechanism", PriorityCRServo.ServoType.AXON_MINI, new boolean[]{false}, 6, 7);
 
-        lintake = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, LEFT_PIVOT)},
-                "leftIntakePivot", nPriorityServo.ServoType.AXON_MINI, intakePivotUpPosition,
-                intakePivotDownPosition, intakePivotUpPosition, new boolean[]{false}, 6, 7);
-        rintake = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, RIGHT_PIVOT)},
-                "rightIntakePivot", nPriorityServo.ServoType.AXON_MINI, intakePivotUpPosition,
+        pivot = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, PIVOT)},
+                "intakePivot", nPriorityServo.ServoType.AXON_MINI, intakePivotUpPosition,
                 intakePivotDownPosition, intakePivotUpPosition, new boolean[]{false}, 6, 7);
 
-        robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, lintake, rintake);
+        robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, pivot);
 
         flowerEncoder = robot.hardwareMap.get(AnalogInput.class, FLOWER_ENCODER);
         lastFlowerRaw = flowerRaw();
@@ -151,7 +139,6 @@ public class Intake {
         readFlower();
 
         boolean intaking = state == State.INTAKE || state == State.POLLEN_RETRIEVAL_INTAKE;
-        if (intaking) chooseSide();
         checkRejects(now, intaking);
 
         int direction = 0;
@@ -159,23 +146,23 @@ public class Intake {
             case IDLE:
                 intakeMotor.setTargetPower(0);
                 flowerMechanismServo.setTargetPower(0);
-                pivots(false, false);
+                pivotDown(false);
                 break;
             case INTAKE:
                 direction = runIntake();
                 break;
             case FEED:
                 intakeMotor.setTargetPower(shootRollerPower);
-                pivots(!LIFT_WHILE_FEEDING, !LIFT_WHILE_FEEDING);
+                pivotDown(!LIFT_WHILE_FEEDING);
                 break;
             case EJECT:
                 intakeMotor.setTargetPower(-EJECT_POWER);
-                pivots(side == Side.LEFT, side == Side.RIGHT);
+                pivotDown(true);
                 direction = -1;
                 break;
             case POLLEN_RETRIEVAL_START:
                 intakeMotor.setTargetPower(0);
-                pivots(false, false);
+                pivotDown(false);
                 if (driveFlowerTo(flowerMechDownPosition)) state = State.POLLEN_RETRIEVAL_INTAKE;
                 break;
             case POLLEN_RETRIEVAL_INTAKE:
@@ -184,7 +171,7 @@ public class Intake {
                 break;
             case POLLEN_RETRIEVAL_END:
                 intakeMotor.setTargetPower(0);
-                pivots(false, false);
+                pivotDown(false);
                 if (driveFlowerTo(flowerMechUpPosition)) state = State.IDLE;
                 break;
             case TEST:
@@ -200,31 +187,21 @@ public class Intake {
     private int runIntake() {
         if (rejecting()) {
             intakeMotor.setTargetPower(-REJECT_POWER);
-            pivots(rejectSide == Side.LEFT, rejectSide == Side.RIGHT);
+            pivotDown(true);
             return -1;
         }
         if (isFull()) {
             intakeMotor.setTargetPower(0);
-            pivots(false, false);
+            pivotDown(false);
             return 0;
         }
-        pivots(side == Side.LEFT, side == Side.RIGHT);
+        pivotDown(true);
         intakeMotor.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
         return reversed ? -1 : 1;
     }
 
-    private void pivots(boolean leftDown, boolean rightDown) {
-        lintake.setTargetAngle(leftDown ? intakePivotDownPosition : intakePivotUpPosition);
-        rintake.setTargetAngle(rightDown ? intakePivotDownPosition : intakePivotUpPosition);
-    }
-
-    private void chooseSide() {
-        if (rejecting()) return;
-        double y = robot.drivetrain.state == Drivetrain.State.FOLLOW_TRAJECTORY
-                ? ROBOT_VELOCITY.y / DriveConstants.V_STRAFE
-                : robot.drivetrain.getLastMoveVector().y;
-        if (y > SIDE_DEADBAND) side = Side.RIGHT;
-        else if (y < -SIDE_DEADBAND) side = Side.LEFT;
+    private void pivotDown(boolean down) {
+        pivot.setTargetAngle(down ? intakePivotDownPosition : intakePivotUpPosition);
     }
 
     private void checkRejects(long now, boolean intaking) {
@@ -234,7 +211,8 @@ public class Intake {
         }
         if (rejecting()) {
             long t = now - rejectStart;
-            boolean clear = !sensors[rejectSide.ordinal()].present;
+            boolean clear = rejectSide != null ? !sensors[rejectSide.ordinal()].present
+                    : !sensors[0].present && !sensors[1].present;
             boolean done = t >= REJECT_MIN_MS && clear
                     && (!"over limit".equals(rejectReason) || counter.count() <= CAPACITY);
             if (done || t >= REJECT_MAX_MS) rejectStart = -1;
@@ -251,7 +229,7 @@ public class Intake {
                 return;
             }
         }
-        if (counter.count() > CAPACITY) startReject(now, "over limit", side);
+        if (counter.count() > CAPACITY) startReject(now, "over limit", null);
     }
 
     private void startReject(long now, String reason, Side s) {
@@ -289,8 +267,6 @@ public class Intake {
 
     public void intake() { state = State.INTAKE; }
 
-    public void intake(Side side) { this.side = side; state = State.INTAKE; }
-
     public void feed() { state = State.FEED; }
 
     public void eject() { state = State.EJECT; }
@@ -308,10 +284,6 @@ public class Intake {
         flowerAngle = lastFlowerRaw;
         state = State.POLLEN_RETRIEVAL_START;
     }
-
-    public void setSide(Side side) { this.side = side; }
-
-    public Side getSide() { return side; }
 
     public int getBallCount() { return counter.count(); }
 
@@ -345,7 +317,6 @@ public class Intake {
 
     private void updateTelemetry() {
         TelemetryUtil.packet.put("Intake : state", state);
-        TelemetryUtil.packet.put("Intake : side", side);
         TelemetryUtil.packet.put("Intake : balls", counter.count());
         TelemetryUtil.packet.put("Intake : full", isFull());
         TelemetryUtil.packet.put("Intake : rejecting", rejecting() ? rejectReason : "no");

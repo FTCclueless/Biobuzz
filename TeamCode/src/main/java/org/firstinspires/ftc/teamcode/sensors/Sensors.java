@@ -1,9 +1,6 @@
 package org.firstinspires.ftc.teamcode.sensors;
 
 import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_POSITION;
-import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_VELOCITY;
-import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_GLOBAL_VELOCITY;
-import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_GLOBAL_ACCELERATION;
 
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
@@ -58,12 +55,6 @@ public class Sensors {
         for (LynxModule module : allHubs) {
             module.clearBulkCache();
         }
-
-        robot.drivetrain.localizer.update(loopTime);
-        ROBOT_POSITION = robot.drivetrain.localizer.getPose();
-        ROBOT_VELOCITY = robot.drivetrain.localizer.getRelativeVelocity();
-        ROBOT_GLOBAL_VELOCITY = robot.drivetrain.localizer.getGlobalVelocity();
-        ROBOT_GLOBAL_ACCELERATION = robot.drivetrain.localizer.getGlobalAccel();
 
         //intakeCurrent = robot.intake.roller.getCurrent();
 

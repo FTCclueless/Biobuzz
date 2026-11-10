@@ -2,7 +2,8 @@ package org.firstinspires.ftc.teamcode.utils;
 
 import com.acmerobotics.dashboard.canvas.Canvas;
 
-import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.geometry.Path;
+import com.pedropathing.math.Vector2D;
+import com.pedropathing.paths.Path;
 
 import java.util.List;
 
@@ -50,12 +51,12 @@ public class DashboardUtil {
 
     public static double[][] samplePath(Path path) {
         if (path == null) return null;
-        int samples = Math.max(20, (int) (path.length() * 2));
-        List<Vector2> pts = path.sampleUniform(samples);
-        double[][] out = new double[2][pts.size()];
-        for (int i = 0; i < pts.size(); i++) {
-            out[0][i] = pts.get(i).x;
-            out[1][i] = pts.get(i).y;
+        int n = Math.max(20, (int) (path.curve.length() * 2));
+        double[][] out = new double[2][n];
+        for (int i = 0; i < n; i++) {
+            Vector2D p = path.curve.get(i / (n - 1.0));
+            out[0][i] = p.x();
+            out[1][i] = p.y();
         }
         return out;
     }

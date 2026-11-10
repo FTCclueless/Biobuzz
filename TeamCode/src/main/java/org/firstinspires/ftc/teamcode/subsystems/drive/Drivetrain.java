@@ -3,402 +3,141 @@ package org.firstinspires.ftc.teamcode.subsystems.drive;
 import static org.firstinspires.ftc.teamcode.utils.Globals.DRIVETRAIN_ENABLED;
 import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_POSITION;
 
-import android.util.Log;
-
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.pedropathing.follower.Follower;
+import com.pedropathing.math.Pose;
+import com.pedropathing.math.Velocity;
+import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.hardware.Gamepad;
-import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
 
 import org.firstinspires.ftc.teamcode.Robot;
-import org.firstinspires.ftc.teamcode.sensors.Sensors;
-import org.firstinspires.ftc.teamcode.subsystems.drive.localizers.PinpointLocalizer;
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.utils.AngleUtil;
 import org.firstinspires.ftc.teamcode.utils.DashboardUtil;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
+import org.firstinspires.ftc.teamcode.utils.PID;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
-import org.firstinspires.ftc.teamcode.utils.Vector2;
-import org.firstinspires.ftc.teamcode.utils.priority.HardwareQueue;
-import org.firstinspires.ftc.teamcode.utils.priority.PriorityMotor;
-import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.MecanumKinematics;
-import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.follow.PathFollower;
-import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.Trajectory;
 import org.firstinspires.ftc.teamcode.vision.Vision;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
 
 @Config
 public class Drivetrain {
-    public enum State {
-        PID_TO_POINT,
-        BRAKE,
-        WAIT,
-        DRIVE,
-        FOLLOW_TRAJECTORY,
-        IDLE
-    }
-    public State state = State.IDLE;
-    private Vector2 lastMoveVector = new Vector2(0, 0);
-    private PathFollower trajectoryFollower;
-    private MecanumKinematics kinematics;
-    private Pose2d trajectoryEndPose;
-    private double[][] trajectoryDrawPoints;
-
-    public PriorityMotor leftFront, leftRear, rightRear, rightFront;
-    private final List<PriorityMotor> motors;
-
-    public Vision vision;
-    public PinpointLocalizer localizer;
-    private final HardwareQueue hardwareQueue;
-    private final Sensors sensors;
-
     public static double targetHeading = 135;
     public static double headingLockDeadzone = 2.5;
+    public static PID headingPID = new PID(0.4, 0.0, 0.002);
+    public static double HEADING_K_STATIC = 0.15;
+    public static double ACCEL_FILTER = 0.3;
+
+    public final Follower follower;
+    public Vision vision;
+    private final Robot robot;
+
+    private double[][] pathDrawPoints;
+    private Pose2d lastGlobalVelocity = null;
     private boolean wasLocking = false;
 
-    public Drivetrain(Robot robot, Vision vision) { this(robot.hardwareMap, robot.sensors, robot.hardwareQueue, vision); }
-
-    public Drivetrain(HardwareMap hardwareMap, Sensors sensors, HardwareQueue hardwareQueue, Vision vision) {
+    public Drivetrain(Robot robot, Vision vision) {
+        this.robot = robot;
         this.vision = vision;
-        this.hardwareQueue = hardwareQueue;
-        this.sensors = sensors;
-
-        leftFront = new PriorityMotor(
-            hardwareMap.get(DcMotorEx.class, "leftFront"),
-            "leftFront", 4, 5,
-            1.0, sensors
-        );
-        leftRear = new PriorityMotor(
-            hardwareMap.get(DcMotorEx.class, "leftRear"),
-            "leftRear", 4, 5,
-            1.0, sensors
-        );
-        rightRear = new PriorityMotor(
-            hardwareMap.get(DcMotorEx.class, "rightRear"),
-            "rightRear", 4, 5,
-            1.0, sensors
-        );
-        rightFront = new PriorityMotor(
-            hardwareMap.get(DcMotorEx.class, "rightFront"),
-            "rightFront", 4, 5,
-            1.0, sensors
-        );
-
-        motors = Arrays.asList(leftFront, leftRear, rightRear, rightFront);
-
-        for (PriorityMotor motor : motors) {
-            motor.setCritical(true).setMaxStaleness(0.10);
-        }
-
-        configureMotors();
-        setMinPowersToOvercomeFriction(1.0);
-
-        localizer = new PinpointLocalizer(hardwareMap);
+        follower = Constants.create(robot.hardwareMap);
     }
-
-    public void configureMotors() {
-        for (PriorityMotor motor : motors) {
-            MotorConfigurationType motorConfigurationType = motor.motor[0].getMotorType().clone();
-            motorConfigurationType.setAchieveableMaxRPMFraction(1.0);
-            motor.motor[0].setMotorType(motorConfigurationType);
-
-            hardwareQueue.addDevice(motor);
-        }
-
-        setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        leftFront.motor[0].setDirection(DcMotor.Direction.REVERSE);
-        leftRear.motor[0].setDirection(DcMotor.Direction.REVERSE);
-    }
-
-    public void setMode(DcMotor.RunMode runMode) {
-        for (PriorityMotor motor : motors) {
-            motor.motor[0].setMode(runMode);
-        }
-    }
-
-    public void setZeroPowerBehavior(DcMotor.ZeroPowerBehavior zeroPowerBehavior) {
-        for (PriorityMotor motor : motors) {
-            motor.motor[0].setZeroPowerBehavior(zeroPowerBehavior);
-        }
-    }
-
-    double[] minPowersToOvercomeFriction = {
-        0.3, 0.3, 0.3, 0.3
-    };
-
-    public void setMinPowersToOvercomeFriction(double scalar) {
-        leftFront.setMinimumPowerToOvercomeStaticFriction(minPowersToOvercomeFriction[0] * scalar);
-        leftRear.setMinimumPowerToOvercomeStaticFriction(minPowersToOvercomeFriction[1] * scalar);
-        rightRear.setMinimumPowerToOvercomeStaticFriction(minPowersToOvercomeFriction[2] * scalar);
-        rightFront.setMinimumPowerToOvercomeStaticFriction(minPowersToOvercomeFriction[3] * scalar);
-
-        for (PriorityMotor m : motors) {
-            m.setMinimumPowerToOvercomeKineticFriction(0.145);
-        }
-    }
-
-    public void resetMinPowersToOvercomeFriction() {
-        leftFront.setMinimumPowerToOvercomeStaticFriction(0.0);
-        leftRear.setMinimumPowerToOvercomeStaticFriction(0.0);
-        rightRear.setMinimumPowerToOvercomeStaticFriction(0.0);
-        rightFront.setMinimumPowerToOvercomeStaticFriction(0.0);
-
-        for (PriorityMotor m : motors) {
-            m.setMinimumPowerToOvercomeKineticFriction(0);
-        }
-    }
-
-    public void setPoseEstimate(Pose2d pose2d) {
-        localizer.setPose(pose2d);
-        LogUtil.drivePositionReset = true;
-    }
-
-    public Pose2d getPoseEstimate() {
-        return ROBOT_POSITION;
-    }
-
-    private Pose2d targetPoint = new Pose2d (0, 0, 0);
-
-    public static double xError = 0.0, yError = 0.0, hError = 0.0;
 
     public void update() {
-        if (!DRIVETRAIN_ENABLED) {
-            return;
-        }
-
-        switch (state) {
-            case PID_TO_POINT:
-                calculateErrors();
-                PIDF();
-                if (atPoint()) {
-                    state = isWaypoint ? State.WAIT : State.BRAKE;
-                    DriveConstants.xPID.resetIntegral();
-                    DriveConstants.yPID.resetIntegral();
-                    DriveConstants.turnPID.resetIntegral();
-                }
-                break;
-            case BRAKE:
-                stopAllMotors();
-                state = State.WAIT;
-                break;
-            case WAIT:
-                calculateErrors();
-                if (!atPoint()) {
-                    state = State.PID_TO_POINT;
-                }
-                break;
-            case FOLLOW_TRAJECTORY:
-                PathFollower.Command cmd =
-                        trajectoryFollower.update(ROBOT_POSITION, sensors.loopTime);
-
-                setMotorPowers(cmd.powers[0], cmd.powers[2], cmd.powers[3], cmd.powers[1]);
-
-                TelemetryUtil.packet.put("Path : s", cmd.s);
-                TelemetryUtil.packet.put("Path : contour error", cmd.contourError);
-                TelemetryUtil.packet.put("Path : lag error", cmd.lagError);
-                TelemetryUtil.packet.put("Path : saturation", cmd.saturation);
-
-                double followSeconds = (System.nanoTime() - trajectoryStartNanos) / 1e9;
-                boolean timedOut = followSeconds > trajectoryFollower.trajectory().duration()
-                        * DriveConstants.PATH_TIMEOUT_FACTOR + DriveConstants.PATH_TIMEOUT_EXTRA;
-                if (trajectoryFollower.isFinished() || trajectoryFollower.hasFaulted() || timedOut) {
-                    if (trajectoryFollower.hasFaulted()) {
-                        Log.e("Drivetrain", "path follower fault: " + trajectoryFollower.fault());
-                    } else if (timedOut) {
-                        Log.w("Drivetrain", "path timed out; finishing with point-to-point PID");
-                    }
-                    stopAllMotors();
-                    if (trajectoryEndPose != null) this.targetPoint = trajectoryEndPose;
-                    state = State.WAIT;
-                }
-                break;
-            case DRIVE:
-                break;
-            case IDLE:
-                break;
-        }
-
+        if (!DRIVETRAIN_ENABLED) follower.stop();
+        follower.update();
+        publishState();
         updateTelemetry();
     }
 
-    private void calculateErrors() {
-        double deltaX = (targetPoint.x - ROBOT_POSITION.x);
-        double deltaY = (targetPoint.y - ROBOT_POSITION.y);
+    private void publishState() {
+        Pose p = follower.pose();
+        Velocity v = follower.velocity();
+        double c = Math.cos(p.heading()), s = Math.sin(p.heading());
+        Pose2d global = new Pose2d(v.vx, v.vy, v.omega);
 
-        xError = Math.cos(ROBOT_POSITION.heading)*deltaX + Math.sin(ROBOT_POSITION.heading)*deltaY;
-        yError = -Math.sin(ROBOT_POSITION.heading)*deltaX + Math.cos(ROBOT_POSITION.heading)*deltaY;
-        hError = AngleUtil.clipAngle(targetPoint.heading - ROBOT_POSITION.heading);
-    }
+        ROBOT_POSITION = new Pose2d(p.x(), p.y(), p.heading());
+        Globals.ROBOT_GLOBAL_VELOCITY = global;
+        Globals.ROBOT_VELOCITY = new Pose2d(v.vx * c + v.vy * s, -v.vx * s + v.vy * c, v.omega);
 
-    double fwd, strafe, h;
-
-    private void PIDF() {
-        fwd = DriveConstants.xPID.update(xError, -maxPower, maxPower);
-        strafe = DriveConstants.yPID.update(yError, -maxPower, maxPower);
-        h = DriveConstants.turnPID.update(hError, -maxPower, maxPower);
-        if (hError > DriveConstants.H_THRESH) h += DriveConstants.TURN_K_STATIC;
-        if (hError < -DriveConstants.H_THRESH) h -= DriveConstants.TURN_K_STATIC;
-
-        setMinPowersToOvercomeFriction(1.0);
-
-        setMoveVector(new Vector2(fwd, strafe), h);
-    }
-
-    private boolean atPoint() {
-        if (isWaypoint) return Math.abs(xError) < DriveConstants.WAYPOINT_THRESH && Math.abs(yError) < DriveConstants.WAYPOINT_THRESH;
-        return Math.abs(xError) < DriveConstants.X_THRESH && Math.abs(yError) < DriveConstants.Y_THRESH && Math.abs(hError) < DriveConstants.H_THRESH;
-    }
-
-    private double maxPower = 1.0;
-    private boolean isWaypoint = false;
-    private long trajectoryStartNanos = 0;
-    public void followTrajectory(Trajectory trajectory) {
-        kinematics = DriveConstants.kinematics();
-        trajectoryEndPose = trajectory.poseAt(trajectory.length());
-        this.isWaypoint = false;
-
-        trajectory.resetMarkers();
-        trajectoryDrawPoints = DashboardUtil.samplePath(trajectory.path());
-        trajectoryFollower = DriveConstants.follower(trajectory, kinematics);
-        trajectoryStartNanos = System.nanoTime();
-        state = State.FOLLOW_TRAJECTORY;
-    }
-
-    public PathFollower trajectoryFollower() { return trajectoryFollower; }
-
-    public void goToPoint(Pose2d targetPoint, double maxPower) { goToPoint(targetPoint, maxPower, false); };
-    public void goToPoint(Pose2d targetPoint, double maxPower, boolean isWaypoint) {
-        Pose2d lastTargetPoint = this.targetPoint;
-        this.targetPoint = targetPoint;
-        this.maxPower = maxPower;
-        this.isWaypoint = isWaypoint;
-
-        if (lastTargetPoint.x != targetPoint.x || lastTargetPoint.y != targetPoint.y || lastTargetPoint.heading != targetPoint.heading || state == State.DRIVE) {
-            DriveConstants.xPID.resetIntegral();
-            DriveConstants.yPID.resetIntegral();
-            DriveConstants.turnPID.resetIntegral();
-            state = State.PID_TO_POINT;
+        double dt = robot.sensors.loopTime;
+        if (lastGlobalVelocity != null && dt > 0) {
+            Pose2d a = Globals.ROBOT_GLOBAL_ACCELERATION;
+            Globals.ROBOT_GLOBAL_ACCELERATION = new Pose2d(
+                    a.x + ((v.vx - lastGlobalVelocity.x) / dt - a.x) * ACCEL_FILTER,
+                    a.y + ((v.vy - lastGlobalVelocity.y) / dt - a.y) * ACCEL_FILTER,
+                    a.heading + ((v.omega - lastGlobalVelocity.heading) / dt - a.heading) * ACCEL_FILTER);
         }
+        lastGlobalVelocity = global;
     }
 
-    public void setMoveVector(Vector2 moveVector, double turn) {
-        this.lastMoveVector = moveVector;
-        double[] powers = {
-                moveVector.x - turn - moveVector.y,
-                moveVector.x - turn + moveVector.y,
-                moveVector.x + turn - moveVector.y,
-                moveVector.x + turn + moveVector.y
-        };
-        normalizeArray(powers);
-
-        setMotorPowers(powers[0], powers[1], powers[2], powers[3]);
-
-        TelemetryUtil.packet.put("Drivetrain : moveVector x", moveVector.x);
-        TelemetryUtil.packet.put("Drivetrain : moveVector y", moveVector.y);
-        TelemetryUtil.packet.put("Drivetrain : moveVector turn", turn);
+    public void follow(Path path) {
+        pathDrawPoints = DashboardUtil.samplePath(path);
+        follower.follow(path);
     }
 
-    public static double smoothPowerK = 0.5;
-    public void setMotorPowers(double lf, double lr, double rr, double rf) {
-        leftFront.setTargetPowerSmooth(lf, smoothPowerK);
-        leftRear.setTargetPowerSmooth(lr, smoothPowerK);
-        rightRear.setTargetPowerSmooth(rr, smoothPowerK);
-        rightFront.setTargetPowerSmooth(rf, smoothPowerK);
+    public boolean isBusy() { return follower.isBusy(); }
+
+    public void goToPoint(Pose2d target) {
+        pathDrawPoints = null;
+        follower.hold(toPedro(target));
     }
 
-    public void stopAllMotors() {
-        for (PriorityMotor motor : motors) {
-            motor.setTargetPower(0);
-        }
+    public void stop() { follower.stop(); }
+
+    public void setPoseEstimate(Pose2d pose) {
+        follower.setPose(toPedro(pose));
+        ROBOT_POSITION = pose.clone();
+        lastGlobalVelocity = null;
+        Globals.ROBOT_GLOBAL_ACCELERATION = new Pose2d(0, 0, 0);
+        LogUtil.drivePositionReset = true;
     }
 
-    public void normalizeArray(double[] arr) {
-        double largest = 1;
-        for (int i = 0; i < arr.length; i++) {
-            largest = Math.max(largest, Math.abs(arr[i]));
-        }
-        for (int i = 0; i < arr.length; i++) {
-            arr[i] /= largest;
-        }
-    }
+    public Pose2d getPoseEstimate() { return ROBOT_POSITION; }
+
+    public static Pose toPedro(Pose2d p) { return new Pose(p.x, p.y, p.heading); }
 
     public void drive(Gamepad gamepad) { drive(gamepad, false); }
+
     public void drive(Gamepad gamepad, boolean lockHeading) {
-        resetMinPowersToOvercomeFriction();
-        state = State.DRIVE;
-
-        double forward = smoothControls(-1 * gamepad.left_stick_y);
-        double strafe = smoothControls(-1 * gamepad.left_stick_x);
-
-        Vector2 drive = new Vector2(forward,strafe);
-        if (drive.mag() <= 0.05) {
-            drive.mul(0);
-        }
+        double forward = smoothControls(-gamepad.left_stick_y);
+        double strafe = smoothControls(-gamepad.left_stick_x);
+        if (Math.hypot(forward, strafe) <= 0.05) forward = strafe = 0;
 
         double turn;
-
         if (lockHeading) {
-            if (!wasLocking) {
-                DriveConstants.turnPID.resetIntegral();
-            }
+            if (!wasLocking) headingPID.resetIntegral();
             wasLocking = true;
-
-            double error = AngleUtil.clipAngle(Math.toRadians(targetHeading) * (Globals.isRed ? 1 : -1) - ROBOT_POSITION.heading);
+            double error = AngleUtil.clipAngle(Math.toRadians(targetHeading) * (Globals.isRed ? 1 : -1)
+                    - ROBOT_POSITION.heading);
             if (Math.abs(error) < Math.toRadians(headingLockDeadzone)) {
                 turn = 0;
-                DriveConstants.turnPID.resetIntegral();
+                headingPID.resetIntegral();
             } else {
-                turn = DriveConstants.turnPID.update(error, -maxPower, maxPower) + DriveConstants.TURN_K_STATIC * Math.signum(error);
+                turn = headingPID.update(error, -1, 1) + HEADING_K_STATIC * Math.signum(error);
             }
         } else {
             wasLocking = false;
             turn = smoothControls(-gamepad.right_stick_x);
         }
-
-        setMoveVector(drive, turn);
+        follower.manual(forward, strafe, turn);
     }
 
     public double smoothControls(double value) {
         return 0.7 * Math.tan(0.96 * value);
     }
 
-    public void updateTelemetry() {
-        TelemetryUtil.packet.put("Drivetrain : state", state);
-
-        TelemetryUtil.packet.put("Drivetrain : PID xError", xError);
-        TelemetryUtil.packet.put("Drivetrain : PID yError", yError);
-        TelemetryUtil.packet.put("Drivetrain : PID hError", hError);
-
-        TelemetryUtil.packet.put("Drivetrain : PID xPow", fwd);
-        TelemetryUtil.packet.put("Drivetrain : PID yPow", strafe);
-        TelemetryUtil.packet.put("Drivetrain : PID hPow", h);
-
-        LogUtil.driveState.set(state.toString());
-
-        Canvas canvas = TelemetryUtil.packet.fieldOverlay();
-        if (state == State.FOLLOW_TRAJECTORY && trajectoryFollower != null) {
-            Trajectory traj = trajectoryFollower.trajectory();
-            DashboardUtil.drawSampledPath(canvas, trajectoryDrawPoints);
-
-            DashboardUtil.drawRobot(canvas, traj.poseAt(trajectoryFollower.arcLength()), "#8000ff");
-            LogUtil.drivePath.set(traj.path().toString());
-        } else {
-            DashboardUtil.drawRobot(canvas, targetPoint, isWaypoint ? "#c040ff" : "#8000ff");
-            LogUtil.drivePath.set(String.format(Locale.US, "%.3f %.3f %.3f", targetPoint.x, targetPoint.y, targetPoint.heading));
+    private void updateTelemetry() {
+        TelemetryUtil.packet.put("Drivetrain : mode", follower.mode());
+        LogUtil.driveState.set(follower.mode().toString());
+        if (follower.following()) {
+            TelemetryUtil.packet.put("Path : distance to end", follower.distanceToEndpoint());
+            TelemetryUtil.packet.put("Path : completion", follower.completion());
+            Canvas canvas = TelemetryUtil.packet.fieldOverlay();
+            if (pathDrawPoints != null) DashboardUtil.drawSampledPath(canvas, pathDrawPoints);
+            Pose c = follower.closestPose();
+            DashboardUtil.drawRobot(canvas, new Pose2d(c.x(), c.y(), c.heading()), "#8000ff");
         }
-    }
-
-    public Vector2 getLastMoveVector() {
-        return this.lastMoveVector;
     }
 }

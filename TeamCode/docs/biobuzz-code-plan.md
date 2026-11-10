@@ -64,9 +64,8 @@ priority as last season's robot, which is why most of this repo survives.
 
 Essentially the whole substrate. Do not rewrite these:
 
-- `subsystems/drive/**` — GVF pathing, Bezier/spline geometry, min-curvature
-  optimizer, velocity profiling, friction ellipse, slip detection.
-- `subsystems/drive/localizers/**` — pure Pinpoint odometry (`PinpointLocalizer`).
+- Driving, Pinpoint odometry and path following — Pedro Pathing 3
+  (`pedroPathing/Constants.java`), wrapped by `subsystems/drive/Drivetrain.java`.
 - `control/**` — LQR, motion profiles, matrix math, state prediction.
 - `utils/**` and `utils/priority/**` — the hardware queue and priority
   device scheduling are season-agnostic and expensive to rebuild.
@@ -174,8 +173,8 @@ starting points. Requirements:
 - A close-launch auto that shoots the 4 preloads at the upward cell from a
   fixed, tuned spot, then parks. Highest points per unit of risk.
 - A garden/flower-pollen cycling auto once the intake is proven.
-- Keep `PathingTuner`, `GainSweeper`, `FollowMetrics` in the loop — they still
-  work and the drivetrain retune is cheap.
+- Keep the Pedro tuners (`pedroPathing/`) in the loop — the drivetrain retune
+  is cheap.
 
 ### Phase 8 — Optional: scoring sim
 `src/test/java/.../sim/` already has `SimChassis` and `SimOdometry`. A cheap

@@ -1,14 +1,15 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
+import static com.pedropathing.api.Paths.curve;
+import static com.pedropathing.api.Paths.line;
+
 import com.acmerobotics.dashboard.config.Config;
+import com.pedropathing.math.Pose;
+import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Robot;
-import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.geometry.PathBuilder;
-import org.firstinspires.ftc.teamcode.subsystems.drive.DriveConstants;
-import org.firstinspires.ftc.teamcode.subsystems.drive.pathing.profile.Trajectory;
-import org.firstinspires.ftc.teamcode.subsystems.drive.Drivetrain;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
@@ -27,58 +28,23 @@ public class ExampleAuto extends LinearOpMode {
         Globals.RUNMODE = RunMode.AUTO;
         robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);
+        robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
 
-        Pose2d startPose = new Pose2d(0, 0, 0);
-        robot.drivetrain.setPoseEstimate(startPose);
-
-        Trajectory out = DriveConstants.pathBuilder()
-                .start(0, 0, 0)
-                .end(SIZE, 0, 0)
-                .velocities(0, 0)
-                .headingCandidate(PathBuilder.HeadingChoice.FIXED_AT_END)
-                .endHeading(0)
-                .build();
-
-        Trajectory around = DriveConstants.pathBuilder()
-                .start(SIZE, 0, 0)
-                .waypoint(SIZE, SIZE * 0.5, 3.0)
-                .end(SIZE, SIZE, 0)
-                .velocities(0, 0)
-                .headingCandidate(PathBuilder.HeadingChoice.TANGENT)
-                .build();
-
-        Trajectory home = DriveConstants.pathBuilder()
-                .start(SIZE, SIZE, 0)
-                .waypoint(SIZE * 0.5, SIZE, 3.0)
-                .end(0, 0, 0, 0)
-                .velocities(0, 0)
-                .headingCandidate(PathBuilder.HeadingChoice.TANGENT)
-                .headingCandidate(PathBuilder.HeadingChoice.FIXED_AT_END)
-                .endHeading(0)
-                .markerBeforeEnd(12, "almost home", () -> {
-                })
-                .build();
+        Path out = line(new Pose(0, 0), new Pose(SIZE, 0)).constant(0);
+        Path around = curve(new Pose(SIZE, 0), new Pose(SIZE + 12, SIZE * 0.5), new Pose(SIZE, SIZE)).tangent();
+        Path home = curve(new Pose(SIZE, SIZE), new Pose(SIZE * 0.5, SIZE + 12), new Pose(0, 0)).linear(Math.PI / 2, 0);
 
         telemetry.addLine("Example Auto");
-        telemetry.addData("total distance (in)", "%.0f",
-                out.length() + around.length() + home.length());
-        telemetry.addData("planned time (s)", "%.1f",
-                out.duration() + around.duration() + home.duration());
         telemetry.update();
-
-        while (opModeInInit()) {
-            robot.update();
-        }
+        while (opModeInInit()) robot.update();
         if (isStopRequested()) return;
+
         LogUtil.init();
-
         long startedAt = System.currentTimeMillis();
-
         follow(out);
         follow(around);
         robot.waitFor(PAUSE_MS);
         follow(home);
-
         Globals.AUTO_ENDING_POSE = Globals.ROBOT_POSITION.clone();
 
         telemetry.addData("done in (s)", "%.1f", (System.currentTimeMillis() - startedAt) / 1000.0);
@@ -86,8 +52,8 @@ public class ExampleAuto extends LinearOpMode {
         telemetry.update();
     }
 
-    private void follow(Trajectory trajectory) {
-        robot.drivetrain.followTrajectory(trajectory);
-        robot.waitWhile(() -> robot.drivetrain.state != Drivetrain.State.WAIT);
+    private void follow(Path path) {
+        robot.drivetrain.follow(path);
+        robot.waitWhile(robot.drivetrain::isBusy);
     }
 }

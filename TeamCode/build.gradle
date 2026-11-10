@@ -22,7 +22,7 @@ android {
         jniLibs.useLegacyPackaging true
     }
 
-    // Off-robot unit tests: control/ and drive/pathing/ are pure Java, so they run in a plain JVM.
+    // Off-robot unit tests: control/ and the subsystem logic are pure Java, so they run in a plain JVM.
     testOptions {
         unitTests.returnDefaultValues = true
         unitTests.all {
@@ -35,9 +35,18 @@ android {
     }
 }
 
+repositories {
+    maven { url 'https://central.sonatype.com/repository/maven-snapshots' }
+}
+
+// Pedro 3 only ships snapshots; pin one build so upstream pushes can't change the API under us.
+def pedroVersion = '3.0.0-20260909.040423-37'
+
 dependencies {
     implementation project(':FtcRobotController')
     implementation 'com.google.ar:core:1.25.0'
+    implementation("com.pedropathing:revhub:$pedroVersion") { exclude group: 'com.pedropathing', module: 'core' }
+    implementation "com.pedropathing:core:$pedroVersion"
 
     testImplementation 'junit:junit:4.13.2'
 }
