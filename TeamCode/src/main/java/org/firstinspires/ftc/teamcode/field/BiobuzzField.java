@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.field;
 
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
+import org.firstinspires.ftc.teamcode.utils.Vector3;
 
 public abstract class BiobuzzField
 {
@@ -13,8 +14,13 @@ public abstract class BiobuzzField
 
     private static Side side = Side.RED;
 
-    public static Pose2d RED_PIVOT = new Pose2d(72-72, 72-12-72); // in
-    public static Pose2d BLUE_PIVOT = new Pose2d(72-72, 72+12-72); // in
+    // Competition Manual TU06 §9.6, Figures 9-9 and 9-10.
+    public static double HIVE_PIVOT_Y = 25.5 / 2; // hives are 25.5 in center to center
+    public static double HIVE_CELL_X = (18.84 + 12.04) / 2 * Math.cos(Math.toRadians(30)); // up cell, hive tipped 30 deg
+    public static double HIVE_CELL_Z = (53.5 + 65.6) / 2; // middle of the up cell's opening above the tiles
+
+    public static Pose2d RED_PIVOT = new Pose2d(0, -HIVE_PIVOT_Y); // in
+    public static Pose2d BLUE_PIVOT = new Pose2d(0, HIVE_PIVOT_Y); // in
     public static Pose2d RED_FLOWER_ALLY_STATION = new Pose2d(4*24-72, 0-72); // in
     public static Pose2d RED_FLOWER_SIDE = new Pose2d(0-72, 2*24-72); // in
     public static Pose2d BLUE_FLOWER_ALLY_STATION = new Pose2d(2*24-72, 6*24-72); // in
@@ -35,6 +41,14 @@ public abstract class BiobuzzField
     public static int[] RED_SCORING_APRIL_TAGS = new int[] {30, 31, 32, 33};
 
     private static BiobuzzField currentField = null;
+
+    public static Vector3 hiveCell(boolean red, int xSide) {
+        return new Vector3(xSide >= 0 ? HIVE_CELL_X : -HIVE_CELL_X, red ? -HIVE_PIVOT_Y : HIVE_PIVOT_Y, HIVE_CELL_Z);
+    }
+
+    public static Vector3 nearestHiveCell(boolean red, Pose2d robot) {
+        return hiveCell(red, robot.x >= 0 ? 1 : -1);
+    }
 
     public abstract Pose2d pivot();
     public abstract Pose2d flowerAllyStation();

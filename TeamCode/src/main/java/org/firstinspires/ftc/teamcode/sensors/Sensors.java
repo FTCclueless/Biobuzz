@@ -29,7 +29,7 @@ public class Sensors {
     //private double intakeCurrent;
 
     private double voltage;
-    public static long voltageUpdateTime = 5000;
+    public static long voltageUpdateTime = 500;
     private long lastVoltageUpdatedTime = 0;
     private final VoltageSensor voltageSensor;
 

@@ -175,6 +175,8 @@ public class Intake {
                 if (driveFlowerTo(flowerMechUpPosition)) state = State.IDLE;
                 break;
             case TEST:
+                lastDirection = (int) Math.signum(intakeMotor.getPower());
+                carriedCount = counter.count();
                 updateTelemetry();
                 return;
         }
