@@ -26,6 +26,7 @@ import org.firstinspires.ftc.teamcode.utils.priority.nPriorityServo;
 @Config
 public class Intake {
     public static final String INTAKE_MOTOR = "intake";
+    public static final String TRANSFER_MOTOR = "transfer";
     public static final String PIVOT = "intakePivot";
     public static final String FLOWER_SERVO = "flowerMechanism";
     public static final String FLOWER_ENCODER = "intakeFlowerMechEncoder";
@@ -37,6 +38,7 @@ public class Intake {
     public enum State {
         IDLE,
         INTAKE,
+        TRANSFER,
         FEED,
         EJECT,
         POLLEN_RETRIEVAL_START,
@@ -58,6 +60,8 @@ public class Intake {
 
     public static double intakePivotUpPosition = 0.0;
     public static double intakePivotDownPosition = 1.6;
+
+    public static double transferMotorPower = 1.0; // placeholder
 
     public static double flowerMechDownPosition = 4.5;
     public static double flowerMechUpPosition = 0.0;
@@ -81,7 +85,7 @@ public class Intake {
     private static int carriedCount = -1;
 
     private final Robot robot;
-    public final PriorityMotor intakeMotor;
+    public final PriorityMotor intakeMotor, transferMotor;
     public final PriorityCRServo flowerMechanismServo;
     public final nPriorityServo pivot;
     private final AnalogInput flowerEncoder;
@@ -106,6 +110,10 @@ public class Intake {
                 new DcMotorEx[]{robot.hardwareMap.get(DcMotorEx.class, INTAKE_MOTOR)},
                 "intake", 2, 4, new double[]{1}, robot.sensors);
 
+        transferMotor = new PriorityMotor(
+                new DcMotorEx[]{robot.hardwareMap.get(DcMotorEx.class, TRANSFER_MOTOR)},
+                "transfer", 2, 4, new double[]{1}, robot.sensors);
+
         flowerMechanismServo = new PriorityCRServo(
                 new CRServo[]{robot.hardwareMap.get(CRServo.class, FLOWER_SERVO)},
                 "flowerMechanism", PriorityCRServo.ServoType.AXON_MINI, new boolean[]{false}, 6, 7);
@@ -114,7 +122,7 @@ public class Intake {
                 "intakePivot", nPriorityServo.ServoType.AXON_MINI, intakePivotUpPosition,
                 intakePivotDownPosition, intakePivotUpPosition, new boolean[]{false}, 6, 7);
 
-        robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, pivot);
+        robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, pivot, transferMotor);
 
         flowerEncoder = robot.hardwareMap.get(AnalogInput.class, FLOWER_ENCODER);
         lastFlowerRaw = flowerRaw();
@@ -145,6 +153,7 @@ public class Intake {
         switch (state) {
             case IDLE:
                 intakeMotor.setTargetPower(0);
+                transferMotor.setTargetPower(0);
                 flowerMechanismServo.setTargetPower(0);
                 pivotDown(false);
                 break;
@@ -173,6 +182,9 @@ public class Intake {
                 intakeMotor.setTargetPower(0);
                 pivotDown(false);
                 if (driveFlowerTo(flowerMechUpPosition)) state = State.IDLE;
+                break;
+            case TRANSFER:
+                transferMotor.setTargetPower(transferMotorPower);
                 break;
             case TEST:
                 lastDirection = (int) Math.signum(intakeMotor.getPower());
@@ -272,6 +284,7 @@ public class Intake {
     public void feed() { state = State.FEED; }
 
     public void eject() { state = State.EJECT; }
+    public void transfer() { state = State.TRANSFER; }
 
     public void stop() {
         if (state == State.POLLEN_RETRIEVAL_START || state == State.POLLEN_RETRIEVAL_INTAKE) {
