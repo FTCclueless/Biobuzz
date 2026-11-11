@@ -185,6 +185,7 @@ public class Intake {
                 break;
             case TRANSFER:
                 transferMotor.setTargetPower(transferMotorPower);
+                pivotDown(false);
                 break;
             case TEST:
                 lastDirection = (int) Math.signum(intakeMotor.getPower());
