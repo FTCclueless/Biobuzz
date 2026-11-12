@@ -27,7 +27,9 @@ import org.firstinspires.ftc.teamcode.utils.priority.nPriorityServo;
 public class Intake {
     public static final String INTAKE_MOTOR = "intake";
     public static final String TRANSFER_MOTOR = "transfer";
-    public static final String PIVOT = "intakePivot";
+    public static final String PIVOT_FRONT = "intakePivotFront";
+    public static final String PIVOT_BACK = "intakePivotBack";
+
     public static final String FLOWER_SERVO = "flowerMechanism";
     public static final String FLOWER_ENCODER = "intakeFlowerMechEncoder";
     public static final String LEFT_SENSOR = "leftEntranceSensor";
@@ -38,7 +40,6 @@ public class Intake {
     public enum State {
         IDLE,
         INTAKE,
-        TRANSFER,
         FEED,
         EJECT,
         POLLEN_RETRIEVAL_START,
@@ -58,8 +59,11 @@ public class Intake {
     public static double REJECT_POWER = 1.0;
     public static boolean LIFT_WHILE_FEEDING = true;
 
-    public static double intakePivotUpPosition = 0.0;
-    public static double intakePivotDownPosition = 1.6;
+    public static double intakePivotUpPosition = 0.0; // back: 0.32,
+    public static double intakePivotDownPosition = 1.6; // back: 0.082,
+
+    public static double backPivotUpPos = 0.32;
+    public static double backPivotDownPos = 0.15;
 
     public static double transferMotorPower = 1.0; // placeholder
 
@@ -87,12 +91,14 @@ public class Intake {
     private final Robot robot;
     public final PriorityMotor intakeMotor, transferMotor;
     public final PriorityCRServo flowerMechanismServo;
-    public final nPriorityServo pivot;
+    public final nPriorityServo frontPivot, backPivot;
     private final AnalogInput flowerEncoder;
     private final EntranceSensor[] sensors = new EntranceSensor[2];
-    private final BallCounter counter;
+    //private final BallCounter counter;
 
     public State state = State.IDLE;
+    public boolean overridePivotSide = true;
+    public boolean pivotSideFront = true;
     private boolean reversed = false;
     private int lastDirection = 0;
 
@@ -118,11 +124,14 @@ public class Intake {
                 new CRServo[]{robot.hardwareMap.get(CRServo.class, FLOWER_SERVO)},
                 "flowerMechanism", PriorityCRServo.ServoType.AXON_MINI, new boolean[]{false}, 6, 7);
 
-        pivot = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, PIVOT)},
-                "intakePivot", nPriorityServo.ServoType.AXON_MINI, intakePivotUpPosition,
+        frontPivot = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, PIVOT_FRONT)},
+                "intakePivotFront", nPriorityServo.ServoType.AXON_MINI, intakePivotUpPosition,
                 intakePivotDownPosition, intakePivotUpPosition, new boolean[]{false}, 6, 7);
+        backPivot = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, PIVOT_BACK)},
+                "intakePivotBack", nPriorityServo.ServoType.AXON_MINI, 0,
+                0.4, 0.2, new boolean[]{false}, 6, 7);
 
-        robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, pivot, transferMotor);
+        robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, backPivot, frontPivot, transferMotor);
 
         flowerEncoder = robot.hardwareMap.get(AnalogInput.class, FLOWER_ENCODER);
         lastFlowerRaw = flowerRaw();
@@ -132,17 +141,17 @@ public class Intake {
         sensors[Side.RIGHT.ordinal()] = new EntranceSensor(robot, RIGHT_SENSOR);
 
         int start = Globals.RUNMODE == RunMode.TELEOP ? Math.max(carriedCount, 0) : PRELOAD;
-        counter = new BallCounter(2, start, CAPACITY + 3, MIN_PRESENT_MS, MIN_GAP_MS);
+        //counter = new BallCounter(2, start, CAPACITY + 3, MIN_PRESENT_MS, MIN_GAP_MS);
     }
 
     public void update() {
         long now = System.currentTimeMillis();
 
-        counter.shot(robot.shooter.flywheel.consumeShots());
+        //counter.shot(robot.shooter.flywheel.consumeShots());
         for (Side s : Side.values()) {
             EntranceSensor es = sensors[s.ordinal()];
             es.read();
-            counter.update(s.ordinal(), es.present, lastDirection, now);
+            //counter.update(s.ordinal(), es.present, lastDirection, now);
         }
         readFlower();
 
@@ -162,6 +171,7 @@ public class Intake {
                 break;
             case FEED:
                 intakeMotor.setTargetPower(shootRollerPower);
+                transferMotor.setTargetPower(transferMotorPower);
                 pivotDown(!LIFT_WHILE_FEEDING);
                 break;
             case EJECT:
@@ -183,19 +193,15 @@ public class Intake {
                 pivotDown(false);
                 if (driveFlowerTo(flowerMechUpPosition)) state = State.IDLE;
                 break;
-            case TRANSFER:
-                transferMotor.setTargetPower(transferMotorPower);
-                pivotDown(false);
-                break;
             case TEST:
                 lastDirection = (int) Math.signum(intakeMotor.getPower());
-                carriedCount = counter.count();
+                //carriedCount = counter.count();
                 updateTelemetry();
                 return;
         }
 
         lastDirection = direction;
-        carriedCount = counter.count();
+        //carriedCount = counter.count();
         updateTelemetry();
     }
 
@@ -205,22 +211,36 @@ public class Intake {
             pivotDown(true);
             return -1;
         }
-        if (isFull()) {
+        /*if (isFull()) {
             intakeMotor.setTargetPower(0);
             pivotDown(false);
             return 0;
-        }
+        }*/
         pivotDown(true);
         intakeMotor.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
         return reversed ? -1 : 1;
     }
 
-    private void pivotDown(boolean down) {
-        pivot.setTargetAngle(down ? intakePivotDownPosition : intakePivotUpPosition);
+    private boolean pivotSide()
+    {
+        return overridePivotSide ? pivotSideFront : false; // once custom pathing impl automatic pivot side
+    }
+
+    public void pivotDown(boolean down)
+    {
+        if(pivotSide()) {
+            frontPivot.setTargetAngle(down ? intakePivotDownPosition : intakePivotUpPosition);
+            backPivot.setTargetAngle(!down ? backPivotDownPos : backPivotUpPos);
+        }
+        else {
+            backPivot.setTargetAngle(down ? backPivotDownPos : backPivotUpPos);
+            frontPivot.setTargetAngle(!down ? intakePivotDownPosition : intakePivotUpPosition);
+        }
     }
 
     private void checkRejects(long now, boolean intaking) {
-        if (!intaking) {
+        return;
+        /*if (!intaking) {
             rejectStart = -1;
             return;
         }
@@ -244,7 +264,7 @@ public class Intake {
                 return;
             }
         }
-        if (counter.count() > CAPACITY) startReject(now, "over limit", null);
+        if (counter.count() > CAPACITY) startReject(now, "over limit", null);*/
     }
 
     private void startReject(long now, String reason, Side s) {
@@ -285,7 +305,6 @@ public class Intake {
     public void feed() { state = State.FEED; }
 
     public void eject() { state = State.EJECT; }
-    public void transfer() { state = State.TRANSFER; }
 
     public void stop() {
         if (state == State.POLLEN_RETRIEVAL_START || state == State.POLLEN_RETRIEVAL_INTAKE) {
@@ -301,11 +320,11 @@ public class Intake {
         state = State.POLLEN_RETRIEVAL_START;
     }
 
-    public int getBallCount() { return counter.count(); }
+    /*public int getBallCount() { return counter.count(); }
 
     public void setBallCount(int n) { counter.set(n); carriedCount = counter.count(); }
 
-    public boolean isFull() { return counter.count() >= CAPACITY; }
+    public boolean isFull() { return counter.count() >= CAPACITY; }*/
 
     public boolean hasSensor(Side s) { return sensors[s.ordinal()].kind != EntranceSensor.Kind.MISSING; }
 
@@ -333,8 +352,8 @@ public class Intake {
 
     private void updateTelemetry() {
         TelemetryUtil.packet.put("Intake : state", state);
-        TelemetryUtil.packet.put("Intake : balls", counter.count());
-        TelemetryUtil.packet.put("Intake : full", isFull());
+        //TelemetryUtil.packet.put("Intake : balls", counter.count());
+        //TelemetryUtil.packet.put("Intake : full", isFull());
         TelemetryUtil.packet.put("Intake : rejecting", rejecting() ? rejectReason : "no");
         TelemetryUtil.packet.put("Intake : reversed", reversed);
         TelemetryUtil.packet.put("Intake : flower angle (rad)", flowerAngle);

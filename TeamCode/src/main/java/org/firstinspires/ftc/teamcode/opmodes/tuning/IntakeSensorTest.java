@@ -38,8 +38,8 @@ public class IntakeSensorTest extends LinearOpMode {
             if (gamepad1.x) intake.eject();
             if (gamepad1.y) intake.feed();
             if (gamepad1.dpad_up && !lastUp) intake.startPollenRetrieval();
-            if (gamepad1.left_bumper && !lastLB) intake.setBallCount(intake.getBallCount() - 1);
-            if (gamepad1.right_bumper && !lastRB) intake.setBallCount(intake.getBallCount() + 1);
+            /*if (gamepad1.left_bumper && !lastLB) intake.setBallCount(intake.getBallCount() - 1);
+            if (gamepad1.right_bumper && !lastRB) intake.setBallCount(intake.getBallCount() + 1);*/
             lastLB = gamepad1.left_bumper;
             lastRB = gamepad1.right_bumper;
             lastUp = gamepad1.dpad_up;
@@ -50,8 +50,8 @@ public class IntakeSensorTest extends LinearOpMode {
             TelemetryUtil.sendTelemetry();
 
             telemetry.addData("state", intake.state);
-            telemetry.addData("BALLS HELD", "%d / %d%s", intake.getBallCount(), Intake.CAPACITY,
-                    intake.isFull() ? "  FULL (intakes lifted)" : "");
+            /*telemetry.addData("BALLS HELD", "%d / %d%s", intake.getBallCount(), Intake.CAPACITY,
+                    intake.isFull() ? "  FULL (intakes lifted)" : "");*/
             for (Intake.Side s : Intake.Side.values()) {
                 telemetry.addData(s.toString(), "%s  dist %.2f cm  color %s",
                         intake.isBallPresent(s) ? "BALL" : "----",

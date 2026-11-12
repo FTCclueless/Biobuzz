@@ -49,7 +49,7 @@ public class Robot {
 
         sensors = new Sensors(this);
         drivetrain = new Drivetrain(this);
-        //intake = new Intake(this);
+        intake = new Intake(this);
         //shooter = new Shooter(this);
        // flower = new Flower(this);
     }
@@ -62,7 +62,7 @@ public class Robot {
         sensors.update();
 
         drivetrain.update();
-        //intake.update();
+        intake.update();
         //shooter.update();
         //flower.update();
 

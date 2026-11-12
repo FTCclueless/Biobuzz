@@ -177,13 +177,13 @@ public class Shooter {
                 setHoodAngle(targetHoodAngle);
 
                 boolean empty = false;
-                if (AUTO_STOP_WHEN_EMPTY && robot.intake.getBallCount() == 0) {
+                /*if (AUTO_STOP_WHEN_EMPTY && robot.intake.getBallCount() == 0) {
                     long now = System.currentTimeMillis();
                     if (emptySince < 0) emptySince = now;
                     empty = now - emptySince >= EMPTY_GRACE_MS;
                 } else {
                     emptySince = -1;
-                }
+                }*/
 
                 if (empty) {
                     emptySince = -1;
