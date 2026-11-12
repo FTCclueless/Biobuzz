@@ -18,7 +18,6 @@ import org.firstinspires.ftc.teamcode.utils.LogUtil;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
 import org.firstinspires.ftc.teamcode.utils.priority.HardwareQueue;
 import org.firstinspires.ftc.teamcode.subsystems.drive.Drivetrain;
-import org.firstinspires.ftc.teamcode.vision.Vision;
 
 import java.util.ArrayList;
 import java.util.function.BooleanSupplier;
@@ -49,10 +48,10 @@ public class Robot {
         LogUtil.reset();
 
         sensors = new Sensors(this);
-        drivetrain = new Drivetrain(this, useVision ? new Vision(hardwareMap) : null);
-        intake = new Intake(this);
-        shooter = new Shooter(this);
-        flower = new Flower(this);
+        drivetrain = new Drivetrain(this);
+        //intake = new Intake(this);
+        //shooter = new Shooter(this);
+       // flower = new Flower(this);
     }
 
     public void update() {
@@ -63,9 +62,9 @@ public class Robot {
         sensors.update();
 
         drivetrain.update();
-        intake.update();
-        shooter.update();
-        flower.update();
+        //intake.update();
+        //shooter.update();
+        //flower.update();
 
         if (this.stopChecker != null && this.stopChecker.getAsBoolean()) return;
 

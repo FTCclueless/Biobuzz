@@ -31,16 +31,14 @@ public class Drivetrain {
     public static double ACCEL_FILTER = 0.3;
 
     public final Follower follower;
-    public Vision vision;
     private final Robot robot;
 
     private double[][] pathDrawPoints;
     private Pose2d lastGlobalVelocity = null;
     private boolean wasLocking = false;
 
-    public Drivetrain(Robot robot, Vision vision) {
+    public Drivetrain(Robot robot) {
         this.robot = robot;
-        this.vision = vision;
         follower = Constants.create(robot.hardwareMap);
     }
 
