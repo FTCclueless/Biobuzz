@@ -39,7 +39,7 @@ public class Drivetrain {
 
     public Drivetrain(Robot robot) {
         this.robot = robot;
-        follower = Constants.create(robot.hardwareMap);
+        follower = Constants.create(robot.hardwareMap, robot.hardwareQueue, robot.sensors);
     }
 
     public void update() {
