@@ -71,7 +71,12 @@ public class Teleop extends LinearOpMode {
 
         while (!isStopRequested()) {
             robot.drivetrain.drive(gamepad1);
+            robot.shooter.flywheel.flywheel.setTargetPower(1);
             robot.update();
+
+
+            telemetry.addData("flywheel vel", robot.shooter.flywheel.getRawVelocity());
+            telemetry.update();
         }
 
         Globals.AUTO_ENDING_POSE = Globals.ROBOT_POSITION.clone();

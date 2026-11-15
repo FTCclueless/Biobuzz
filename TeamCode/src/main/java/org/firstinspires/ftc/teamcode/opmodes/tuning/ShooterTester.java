@@ -35,7 +35,7 @@ public class ShooterTester extends LinearOpMode {
     public static double HOOD_LAUNCH_DEG = 45;
     public static boolean TRACK_HIVE = true;
     public static double TURRET_DEG = 0;
-    public static boolean BLOCKER_OPEN = false;
+    //public static boolean BLOCKER_OPEN = false;
     public static boolean FEED = false;
     public static boolean DRIVE = true;
 
@@ -77,13 +77,13 @@ public class ShooterTester extends LinearOpMode {
                     : BiobuzzField.hiveCell(RED_HIVE, CELL_SIDE);
             shooter.targetOverride = cell;
             shooter.turretTrackInManual = TRACK_HIVE;
-            if (!TRACK_HIVE) shooter.turret.setTargetAngle(Math.toRadians(TURRET_DEG));
+            //if (!TRACK_HIVE) shooter.turret.setTargetAngle(Math.toRadians(TURRET_DEG));
 
             double hoodServo = Utils.minMaxClip(
                     (Math.toRadians(HOOD_LAUNCH_DEG) - Shooter.hoodSweep) * Shooter.hoodGearRatio, 0, 1.6);
             shooter.flywheel.setTargetVelocity(spinning ? FLYWHEEL_VELOCITY : 0);
             shooter.setHoodAngle(hoodServo);
-            shooter.setShooterBlocker(!(BLOCKER_OPEN || firing));
+            shooter.setShooterBlocker(!(firing));
             if (FEED || firing) robot.intake.feed(); else robot.intake.stop();
             if (DRIVE) robot.drivetrain.drive(gamepad1);
 
@@ -106,11 +106,12 @@ public class ShooterTester extends LinearOpMode {
             telemetry.addData("flywheel (in/s)", "%.0f / %.0f  %s", vel, spinning ? FLYWHEEL_VELOCITY : 0,
                     spinning && shooter.atVel() ? "AT SPEED" : "");
             telemetry.addData("hood launch (deg)", "%.1f  (servo %.3f)", HOOD_LAUNCH_DEG, hoodServo);
-            telemetry.addData("turret (deg)", "%.1f / %.1f%s", Math.toDegrees(shooter.turret.getAngle()),
-                    Math.toDegrees(shooter.turret.getTargetAngle()), shooter.turret.atLimit() ? "  AT LIMIT" : "");
+            //telemetry.addData("turret (deg)", "%.1f / %.1f%s", Math.toDegrees(shooter.turret.getAngle()),
+                    //Math.toDegrees(shooter.turret.getTargetAngle()), shooter.turret.atLimit() ? "  AT LIMIT" : "");
             telemetry.addData("shots detected", shooter.flywheel.getTotalShots());
             telemetry.addData("battery (V)", "%.2f", battery);
             telemetry.addData("last logged", lastLog);
+            telemetry.addData("firing", firing);
             telemetry.update();
         }
     }

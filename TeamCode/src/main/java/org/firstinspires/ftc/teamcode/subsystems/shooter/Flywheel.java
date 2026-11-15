@@ -22,7 +22,7 @@ public class Flywheel {
 
     public static double WHEEL_DIAMETER = 3.0;
 
-    public static boolean MOTOR_REVERSED = false;
+    public static boolean MOTOR_REVERSED = true;
 
     public static boolean MOTOR_2_OPPOSED = true;
 

@@ -50,7 +50,7 @@ public class Robot {
         sensors = new Sensors(this);
         drivetrain = new Drivetrain(this);
         intake = new Intake(this);
-        //shooter = new Shooter(this);
+        shooter = new Shooter(this);
        // flower = new Flower(this);
     }
 
@@ -63,7 +63,7 @@ public class Robot {
 
         drivetrain.update();
         intake.update();
-        //shooter.update();
+        shooter.update();
         //flower.update();
 
         if (this.stopChecker != null && this.stopChecker.getAsBoolean()) return;
