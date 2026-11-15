@@ -72,10 +72,29 @@ public class Teleop extends LinearOpMode {
         while (!isStopRequested()) {
             robot.drivetrain.drive(gamepad1);
             robot.shooter.flywheel.flywheel.setTargetPower(1);
+
+            // INTAKE: same gamepad1 controls as the reference Teleop.
+            if (lb1.isClicked(gamepad1.left_bumper)) {
+                if (robot.intake.state == Intake.State.IDLE) robot.intake.reqIntake(true);
+                else robot.intake.reqOff(true);
+                intakeReversed = false;
+                robot.intake.setRollerDirection(intakeReversed);
+            }
+
+            if (a1.isClicked(gamepad1.a && !gamepad1.start)) {
+                intakeReversed = robot.intake.state == Intake.State.IDLE || !intakeReversed;
+                robot.intake.reqIntake(true);
+                robot.intake.setRollerDirection(intakeReversed);
+            }
+
             robot.update();
 
 
             telemetry.addData("flywheel vel", robot.shooter.flywheel.getRawVelocity());
+            telemetry.addData("intake state", robot.intake.state);
+            telemetry.addData("intakeReversed", intakeReversed);
+            // The current intake exposes intakeMotor rather than the reference's roller.
+            telemetry.addData("intakePower", robot.intake.intakeMotor.getPower());
             telemetry.update();
         }
 
