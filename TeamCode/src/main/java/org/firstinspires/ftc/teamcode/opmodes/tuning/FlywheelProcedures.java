@@ -29,11 +29,32 @@ final class FlywheelProcedures {
         double power, volts, velocity;
     }
 
+    /** Each power step must be at least this much faster than the last (in/s). */
+    static final double MIN_SPEED_RISE = 10;
+    /** The highest power step must reach at least this (in/s). */
+    static final double MIN_TOP_SPEED = 100;
+
     static final class Model {
         double kV = Double.NaN, kS = Double.NaN, kA = Double.NaN, tau = Double.NaN;
         final List<Point> points = new ArrayList<>();
 
         String problem() {
+            // A stalled wheel or an unplugged encoder gives near-zero speeds that can still fit a
+            // positive kV by chance, and the table then extrapolates to absurd voltages.
+            if (points.size() < 2) return "fewer than 2 power steps finished";
+            for (int i = 1; i < points.size(); i++) {
+                if (points.get(i).velocity < points.get(i - 1).velocity + MIN_SPEED_RISE) {
+                    return String.format(Locale.US,
+                            "speed did not rise with power (%.0f -> %.0f in/s). Is the wheel spinning? "
+                                    + "Do the two motors fight? Is the encoder in shooter1's port?",
+                            points.get(i - 1).velocity, points.get(i).velocity);
+                }
+            }
+            double top = points.get(points.size() - 1).velocity;
+            if (top < MIN_TOP_SPEED) {
+                return String.format(Locale.US, "top speed only %.0f in/s at full power. "
+                        + "Check motor directions and the encoder cable.", top);
+            }
             if (!(kV > 0)) return "kV invalid: need at least 2 steady points with rising speed";
             if (Double.isNaN(tau)) return "tau invalid: the wheel never settled -- raise HOLD_SECONDS";
             if (kS < 0) return "kS negative: low power levels never reached steady state";
