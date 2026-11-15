@@ -59,11 +59,11 @@ public class Intake {
     public static double REJECT_POWER = 1.0;
     public static boolean LIFT_WHILE_FEEDING = true;
 
-    public static double intakePivotUpPosition = 0.0; // back: 0.32,
-    public static double intakePivotDownPosition = 1.6; // back: 0.082,
+    public static double intakePivotUpPosition = 0.5; // back: 0.32,
+    public static double intakePivotDownPosition = 0.05; // back: 0.082,
 
-    public static double backPivotUpPos = 0.32;
-    public static double backPivotDownPos = 0.15;
+    public static double backPivotUpPos = 0.5;
+    public static double backPivotDownPos = 0.05;
 
     public static double transferMotorPower = 1.0; // placeholder
 
@@ -114,7 +114,7 @@ public class Intake {
 
         intakeMotor = new PriorityMotor(
                 new DcMotorEx[]{robot.hardwareMap.get(DcMotorEx.class, INTAKE_MOTOR)},
-                "intake", 2, 4, new double[]{1}, robot.sensors);
+                "intake", 2, 4, new double[]{-1}, robot.sensors);
 
         transferMotor = new PriorityMotor(
                 new DcMotorEx[]{robot.hardwareMap.get(DcMotorEx.class, TRANSFER_MOTOR)},
