@@ -15,6 +15,10 @@ import org.firstinspires.ftc.teamcode.utils.priority.PriorityMotor;
 public class Flywheel {
     public static final String MOTOR_1 = "shooter1";
     public static final String MOTOR_2 = "shooter2";
+    // Motor whose encoder input the flywheel encoder cable is plugged into. "" = shooter1's own port.
+    // The drive motors' encoder inputs are free because Pedro localizes with the Pinpoint.
+    // Read once at init, so restart the OpMode after changing it.
+    public static String ENCODER_PORT = "leftFront";
 
     public static double TICKS_PER_MOTOR_REV = 28.0;
 
@@ -30,13 +34,13 @@ public class Flywheel {
 
     public static long SHOT_LOCKOUT_MS = 150;
 
-    public static double kV = 0.0155;
+    public static double kV = 0.019436;
 
-    public static double kA = 0.0012;
+    public static double kA = 0.002090;
 
-    public static double kS = 0.35;
+    public static double kS = 1.5667;
 
-    public static double MAX_VELOCITY_ERROR = 8.0;
+    public static double MAX_VELOCITY_ERROR = 14.7;
 
     public static double MAX_EFFORT = 8.0;
 
@@ -45,6 +49,11 @@ public class Flywheel {
     public static final FlywheelFeedforward FF_TABLE = new FlywheelFeedforward();
 
     static {
+        FF_TABLE.put(166.2, 4.736);
+        FF_TABLE.put(259.7, 6.709);
+        FF_TABLE.put(362.8, 8.629);
+        FF_TABLE.put(463.6, 10.509);
+        FF_TABLE.put(554.2, 12.361);
     }
 
     public static boolean USE_FF_TABLE = true;
@@ -61,7 +70,7 @@ public class Flywheel {
 
     private final Robot robot;
     public final PriorityMotor flywheel;
-    private final DcMotorEx motorRaw;
+    private final DcMotorEx motorRaw, encoder;
 
     private LQRController controller;
     private double builtWith_kV, builtWith_kA, builtWith_kS, builtWith_dt;
@@ -86,6 +95,7 @@ public class Flywheel {
 
             m.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         }
+        encoder = ENCODER_PORT.isEmpty() ? motorRaw : robot.hardwareMap.get(DcMotorEx.class, ENCODER_PORT);
         double dir = MOTOR_REVERSED ? -1 : 1;
 
         flywheel = new PriorityMotor(new DcMotorEx[]{motorRaw, motor2}, "flywheel", 3, 5,
@@ -151,6 +161,7 @@ public class Flywheel {
         TelemetryUtil.packet.put("Flywheel : Ramped Target", rampedTarget);
         TelemetryUtil.packet.put("Flywheel : Filtered Velocity", filteredVelocity);
         TelemetryUtil.packet.put("Flywheel : Raw Velocity", actualVelocity);
+        TelemetryUtil.packet.put("Flywheel : Encoder Ticks", getRawPosition());
         TelemetryUtil.packet.put("Flywheel : Shots", totalShots);
         TelemetryUtil.packet.put("Flywheel : Error", rampedTarget - filteredVelocity);
         TelemetryUtil.packet.put("Flywheel : Feedforward (V)", controller.lastFeedforward());
@@ -203,9 +214,12 @@ public class Flywheel {
     public double getFilteredVelocity() { return filteredVelocity; }
 
     public double getRawVelocity() {
-        double motorRevsPerSec = motorRaw.getVelocity() / TICKS_PER_MOTOR_REV;
+        double motorRevsPerSec = encoder.getVelocity() / TICKS_PER_MOTOR_REV;
         return Math.abs(motorRevsPerSec * WHEEL_REVS_PER_MOTOR_REV * Math.PI * WHEEL_DIAMETER);
     }
+
+    /** Encoder ticks, for checking the encoder counts at all. */
+    public double getRawPosition() { return encoder.getCurrentPosition(); }
 
     public double getTargetVelocity() { return targetVelocity; }
 
