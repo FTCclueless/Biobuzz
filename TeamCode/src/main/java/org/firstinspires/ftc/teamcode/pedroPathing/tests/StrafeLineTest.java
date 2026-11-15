@@ -25,13 +25,13 @@ public class StrafeLineTest extends OpMode {
     @Override
     public void init() {
         follower = Constants.create(hardwareMap);
-        follower.setPose(new Pose(72, 72, 0));
+        follower.setPose(new Pose(72, 72, Math.PI / 2)); // facing +y, so moving along x is a strafe
     }
 
     @Override
     public void start() {
-        line1 = line(new Pose(72,72, 0), new Pose(DISTANCE + 72,72, 0)).constant(0);
-        line2 = line(new Pose(DISTANCE + 72,72, 0), new Pose(72,72, 0)).constant(0);
+        line1 = line(new Pose(72,72, 0), new Pose(DISTANCE + 72,72, 0)).constant(Math.PI / 2);
+        line2 = line(new Pose(DISTANCE + 72,72, 0), new Pose(72,72, 0)).constant(Math.PI / 2);
         follower.follow(line1);
     }
 

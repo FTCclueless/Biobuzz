@@ -56,10 +56,14 @@ public class HardwareQueue {
         int rankedWrites = 0;
         double bestPriority;
         double loopTime = GET_LOOP_TIME();
+        boolean first = true;
         do {
             int bestIndex = -1;
             bestPriority = 0;
-            double remaining = targetLoopLength - loopTime;
+            // The first pick ignores the budget: a loop already over it still makes one write,
+            // otherwise slow sensor reads would freeze every non-critical motor and servo.
+            double remaining = first ? Double.MAX_VALUE : targetLoopLength - loopTime;
+            first = false;
 
             for (int i = 0; i < n; i++) {
                 PriorityDevice d = devices.get(i);

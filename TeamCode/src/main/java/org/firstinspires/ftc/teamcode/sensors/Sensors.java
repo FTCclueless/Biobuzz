@@ -48,6 +48,8 @@ public class Sensors {
     }
 
     public void update() {
+        // Every loop starts here, so the HardwareQueue's write budget is timed from here too.
+        Globals.START_LOOP();
         long lastTime = currentTime;
         currentTime = System.nanoTime();
         loopTime = (currentTime - lastTime) / 1e9;

@@ -45,6 +45,13 @@ public class TurretCalibrator extends LinearOpMode {
         Globals.RUNMODE = RunMode.TESTER;
         robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);
+        if (robot.shooter == null) {
+            telemetry.addLine("The shooter is turned off in Robot.java (shooter = new Shooter(this) is commented out).");
+            telemetry.addLine("Turn it back on to use this tester.");
+            telemetry.update();
+            waitForStart();
+            return;
+        }
         turret = robot.shooter.turret;
         if (!turret.hasEncoder()) {
             telemetry.addLine("Turret Calibrator needs the turret encoder.");

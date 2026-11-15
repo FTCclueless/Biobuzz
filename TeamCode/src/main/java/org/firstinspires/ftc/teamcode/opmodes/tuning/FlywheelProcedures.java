@@ -14,13 +14,14 @@ import java.util.Locale;
 final class FlywheelProcedures {
     private final LinearOpMode op;
     private final Robot robot;
-    private final Flywheel fw;
+    final Flywheel fw;
     private final Telemetry telemetry;
 
     FlywheelProcedures(LinearOpMode op, Robot robot) {
         this.op = op;
         this.robot = robot;
-        this.fw = robot.shooter.flywheel;
+        // Only the flywheel is needed, so this works while the rest of the shooter is disabled.
+        this.fw = robot.shooter != null ? robot.shooter.flywheel : new Flywheel(robot);
         this.telemetry = op.telemetry;
     }
 

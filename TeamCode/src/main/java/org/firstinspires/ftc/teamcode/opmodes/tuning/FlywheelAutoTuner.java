@@ -132,7 +132,7 @@ public class FlywheelAutoTuner extends LinearOpMode {
 
             Trial t = new Trial();
             t.error = e;
-            t.gain = robot.shooter.flywheel.gain();
+            t.gain = proc.fw.gain();
             t.step = proc.step(String.format(Locale.US, "trial %d (err %.1f)", trials.size() + 1, e),
                     LOW_VELOCITY, TARGET_VELOCITY, STEP_SECONDS, SETTLE_BAND);
             t.failure = judge(t.step);

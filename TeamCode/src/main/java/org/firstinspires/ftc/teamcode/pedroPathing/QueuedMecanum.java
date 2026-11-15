@@ -20,8 +20,9 @@ import org.firstinspires.ftc.teamcode.utils.priority.PriorityMotor;
 @Config
 public class QueuedMecanum extends Mecanum {
     public static double BASE_PRIORITY = 4, PRIORITY_SCALE = 5; // same as the old drivetrain
-    // Over budget, the queue does one ranked write per loop; critical makes every changed wheel write.
-    public static boolean CRITICAL = false;
+    // Critical: every changed wheel is written each loop, even over budget. Non-critical wheels share
+    // one guaranteed write per loop with the rest of the robot, which is too few for path following.
+    public static boolean CRITICAL = true;
 
     private final PriorityMotor[] queued = new PriorityMotor[4]; // Pedro order: FL, FR, BL, BR
 
@@ -44,7 +45,12 @@ public class QueuedMecanum extends Mecanum {
         for (double v : w) max = Math.max(max, Math.abs(v));
         for (int i = 0; i < 4; i++) {
             wheelPowers[i] = w[i] / max;
-            queued[i].setTargetPower(wheelPowers[i]);
+            double last = queued[i].getPower();
+            // Same rule as Pedro's CachedMotor: skip tiny changes, always pass a stop or a reversal.
+            if (Math.abs(wheelPowers[i] - last) > config.powerThreshold.get()
+                    || Math.signum(wheelPowers[i]) != Math.signum(last)) {
+                queued[i].setTargetPower(wheelPowers[i]);
+            }
         }
     }
 

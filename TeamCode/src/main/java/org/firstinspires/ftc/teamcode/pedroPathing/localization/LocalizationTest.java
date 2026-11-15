@@ -29,7 +29,7 @@ public class LocalizationTest extends OpMode {
             loops = 0;
         }
 
-        follower.manual(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
+        follower.manual(-gamepad1.left_stick_y, -gamepad1.left_stick_x, -gamepad1.right_stick_x); // +strafe = left, +turn = CCW
         follower.update();
         telemetry.addData("Loop Time Hz", 1000/loopTime);
         telemetry.addData("Mode", follower.mode());
