@@ -55,19 +55,21 @@ public class Constants {
 
     /** Plain Pedro follower, for the Pedro tuners (no Robot, no HardwareQueue). */
     public static Follower create(HardwareMap h) {
-        return create(h, new Mecanum(h, mecanumConfig));
+        // Tuners never set Globals.RUNMODE, so it holds the last OpMode's value: always reset here.
+        return create(h, new Mecanum(h, mecanumConfig), PinpointLocalizer.ResetMode.RESET_AND_RECALIBRATE_IMU);
     }
 
     /** Robot follower: drive writes go through the HardwareQueue. */
     public static Follower create(HardwareMap h, HardwareQueue queue, Sensors sensors) {
-        return create(h, new QueuedMecanum(h, mecanumConfig, queue, sensors));
+        // Keep the pose carried over from auto in teleop; zero it everywhere else.
+        return create(h, new QueuedMecanum(h, mecanumConfig, queue, sensors),
+                Globals.RUNMODE == RunMode.TELEOP
+                        ? PinpointLocalizer.ResetMode.NONE
+                        : PinpointLocalizer.ResetMode.RESET_AND_RECALIBRATE_IMU);
     }
 
-    private static Follower create(HardwareMap h, Mecanum drivetrain) {
-        // Keep the pose carried over from auto in teleop; zero it everywhere else.
-        pinpointConfig.resetMode.set(Globals.RUNMODE == RunMode.TELEOP
-                ? PinpointLocalizer.ResetMode.NONE
-                : PinpointLocalizer.ResetMode.RESET_AND_RECALIBRATE_IMU);
+    private static Follower create(HardwareMap h, Mecanum drivetrain, PinpointLocalizer.ResetMode reset) {
+        pinpointConfig.resetMode.set(reset);
         PinpointLocalizer localizer = new PinpointLocalizer(h, pinpointConfig);
         if (PINPOINT_FAST_I2C) setFastI2c(h);
         return new Follower(localizer, drivetrain, new Foresight(foresightConfig));

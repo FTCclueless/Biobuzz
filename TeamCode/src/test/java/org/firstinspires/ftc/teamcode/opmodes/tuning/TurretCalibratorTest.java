@@ -1,4 +1,6 @@
-package org.firstinspires.ftc.teamcode.opmodes.tuning;
+// Disabled with TurretCalibrator.java (commented out while the turret is off the robot).
+// Uncomment both together.
+/*package org.firstinspires.ftc.teamcode.opmodes.tuning;
 
 import static org.junit.Assert.assertEquals;
 
@@ -27,4 +29,4 @@ public class TurretCalibratorTest {
         pts.add(new TurretCalibrator.Point(0.5, -1.54, +1));
         assertEquals(0.05, TurretCalibrator.backlash(pts), 1e-9);
     }
-}
+}*/
