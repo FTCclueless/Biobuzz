@@ -91,7 +91,7 @@ public class Shooter {
         switch (state) {
             case IDLE: {
                 stopRequest = false;
-                flywheel.setTargetVelocity(forceUpdateVelBool ? forceUpdateVel : Dist.CLOSE.flywheelVel);
+                flywheel.setTargetVelocity(0);
                 setHoodAngle(0.0);
                 setShooterBlocker(true);
                 //turret.setTargetAngle(0);

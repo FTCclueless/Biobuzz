@@ -53,20 +53,21 @@ public class Intake {
     public static int CAPACITY = 4;
     public static int PRELOAD = 4;
 
-    public static double intakeRollerPower = 1.0;
-    public static double shootRollerPower = 1.0;
+
     public static double EJECT_POWER = 0.7;
+
     public static double REJECT_POWER = 1.0;
-    public static boolean LIFT_WHILE_FEEDING = true;
 
-    public static double intakePivotUpPosition = 0.5; // back: 0.32,
-    public static double intakePivotDownPosition = 0.05; // back: 0.082,
+    public static double intakePivotUpPosition = 0.826; // back: 0.32,
+    public static double intakePivotDownPosition = 0.2; // back: 0.082,
 
-    public static double backPivotUpPos = 0.5;
+    public static double backPivotUpPos = 0.7;
     public static double backPivotDownPos = 0.05;
 
-    public static double transferMotorPower = 1.0; // placeholder
-
+    public static double rollerIntakePower = 1;
+    public static double rollerFeedPower = 1;
+    public static double transferIntakePower = 1; // placeholder
+    public static double transferFeedPower = 1;
     public static double flowerMechDownPosition = 4.5;
     public static double flowerMechUpPosition = 0.0;
     public static double flowerMechEncoderMaxVoltage = 3.3;
@@ -125,11 +126,11 @@ public class Intake {
                 "flowerMechanism", PriorityCRServo.ServoType.AXON_MINI, new boolean[]{false}, 6, 7);
 
         frontPivot = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, PIVOT_FRONT)},
-                "intakePivotFront", nPriorityServo.ServoType.AXON_MINI, intakePivotUpPosition,
-                intakePivotDownPosition, intakePivotUpPosition, new boolean[]{false}, 6, 7);
+                "intakePivotFront", nPriorityServo.ServoType.AXON_MINI, 0,
+                1, intakePivotUpPosition, new boolean[]{false}, 6, 7);
         backPivot = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, PIVOT_BACK)},
                 "intakePivotBack", nPriorityServo.ServoType.AXON_MINI, 0,
-                0.4, 0.2, new boolean[]{false}, 6, 7);
+                1, backPivotUpPos, new boolean[]{false}, 6, 7);
 
         robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, backPivot, frontPivot, transferMotor);
 
@@ -170,12 +171,14 @@ public class Intake {
                 direction = runIntake();
                 break;
             case FEED:
-                intakeMotor.setTargetPower(shootRollerPower);
-                transferMotor.setTargetPower(transferMotorPower);
-                pivotDown(!LIFT_WHILE_FEEDING);
+                intakeMotor.setTargetPower(rollerIntakePower);
+                transferMotor.setTargetPower(transferFeedPower);
+                pivotDown(true);
                 break;
             case EJECT:
                 intakeMotor.setTargetPower(-EJECT_POWER);
+                transferMotor.setTargetPower(-EJECT_POWER);
+
                 pivotDown(true);
                 direction = -1;
                 break;
@@ -208,6 +211,8 @@ public class Intake {
     private int runIntake() {
         if (rejecting()) {
             intakeMotor.setTargetPower(-REJECT_POWER);
+            transferMotor.setTargetPower(-REJECT_POWER);
+
             pivotDown(true);
             return -1;
         }
@@ -217,7 +222,9 @@ public class Intake {
             return 0;
         }*/
         pivotDown(true);
-        intakeMotor.setTargetPowerSmooth(intakeRollerPower * (reversed ? -1 : 1), 0.1);
+        intakeMotor.setTargetPowerSmooth(rollerIntakePower * (reversed ? -1 : 1), 0.1);
+        transferMotor.setTargetPowerSmooth(transferIntakePower * (reversed ? -1 : 1), 0.1);
+
         return reversed ? -1 : 1;
     }
 
@@ -228,14 +235,12 @@ public class Intake {
 
     public void pivotDown(boolean down)
     {
-        if(pivotSide()) {
-            frontPivot.setTargetAngle(down ? intakePivotDownPosition : intakePivotUpPosition);
-            backPivot.setTargetAngle(!down ? backPivotDownPos : backPivotUpPos);
-        }
-        else {
-            backPivot.setTargetAngle(down ? backPivotDownPos : backPivotUpPos);
-            frontPivot.setTargetAngle(!down ? intakePivotDownPosition : intakePivotUpPosition);
-        }
+        // Idle raises both sides. Reversing an active intake lowers both.
+        boolean bothDown = down && (reversed || state == State.EJECT);
+        boolean frontDown = down && (bothDown || pivotSide());
+        boolean backDown = down && (bothDown || !pivotSide());
+        frontPivot.setTargetPos(frontDown ? intakePivotDownPosition : intakePivotUpPosition);
+        backPivot.setTargetPos(backDown ? backPivotDownPos : backPivotUpPos);
     }
 
     private void checkRejects(long now, boolean intaking) {
@@ -243,6 +248,7 @@ public class Intake {
         /*if (!intaking) {
             rejectStart = -1;
             return;
+
         }
         if (rejecting()) {
             long t = now - rejectStart;

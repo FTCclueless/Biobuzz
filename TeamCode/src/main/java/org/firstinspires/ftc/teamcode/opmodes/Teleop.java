@@ -33,8 +33,7 @@ public class Teleop extends LinearOpMode {
         robot.shooter.setManual(false);
         robot.shooter.setShooterBlocker(true);
 
-        //robot.drivetrain.setPoseEstimate(AUTO_ENDING_POSE);
-        robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0)); //change to new starting position
+        robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
 
 
         ButtonToggle lb1 = new ButtonToggle();
@@ -44,6 +43,7 @@ public class Teleop extends LinearOpMode {
         ButtonToggle y1 = new ButtonToggle();
         ButtonToggle x1 = new ButtonToggle();
         ButtonToggle lt1 = new ButtonToggle();
+        ButtonToggle lt2 = new ButtonToggle();
         ButtonToggle rt1 = new ButtonToggle();
         ButtonToggle back1 = new ButtonToggle();
 
@@ -66,6 +66,7 @@ public class Teleop extends LinearOpMode {
 
         while (opModeInInit()) {
             robot.sensors.update();
+            robot.drivetrain.update();
             TelemetryUtil.sendTelemetry();
             telemetry.update();
         }
@@ -141,6 +142,7 @@ public class Teleop extends LinearOpMode {
             boolean midClicked = y1.isClicked(gamepad1.y);
             boolean farClicked = x1.isClicked(gamepad1.x);
             boolean leftTriggerClicked = lt1.isClicked(gamepad1.left_trigger > triggerThresh);
+            boolean secondLeftTriggerClicked = lt2.isClicked(gamepad2.left_trigger > triggerThresh);
             boolean rightTriggerClicked = rt1.isClicked(gamepad1.right_trigger > triggerThresh);
             boolean closeHeld = b1.isHeld(gamepad1.b, 500);
             boolean midHeld = y1.isHeld(gamepad1.y, 500);
@@ -149,7 +151,7 @@ public class Teleop extends LinearOpMode {
 
             if (robot.shooter.state == Shooter.State.TEST) {
 
-                if (leftTriggerClicked || rightTriggerClicked || closeHeld
+                if (rightTriggerClicked || closeHeld
                         || midHeld
                         || farHeld) { // Off
                     flywheelOn = false;
@@ -225,19 +227,15 @@ public class Teleop extends LinearOpMode {
                     confirmation = true;
                 }
 
-                if (leftTriggerClicked) {
+                if (rightTriggerClicked) {
                     robot.shooter.reqStop(true);
                 }
             }
 
-            if(gamepad1.left_trigger > 0.5)
-            {
-                robot.intake.backPivot.setTargetPos(Intake.backPivotDownPos);
-            }
-            else
-            {
-                robot.intake.backPivot.setTargetPos(Intake.backPivotUpPos);
-
+            // Each press switches the selected side; holding a trigger does not repeat.
+            if (leftTriggerClicked || secondLeftTriggerClicked) {
+                robot.intake.overridePivotSide = true;
+                robot.intake.pivotSideFront = !robot.intake.pivotSideFront;
             }
 
             robot.update();

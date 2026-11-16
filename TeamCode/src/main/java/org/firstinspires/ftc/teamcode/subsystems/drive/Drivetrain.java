@@ -127,6 +127,13 @@ public class Drivetrain {
     }
 
     private void updateTelemetry() {
+        Pose pose = follower.pose();
+        TelemetryUtil.packet.put("Pinpoint X (in)", pose.x());
+        TelemetryUtil.packet.put("Pinpoint Y (in)", pose.y());
+        TelemetryUtil.packet.put("Pinpoint Heading (deg)", Math.toDegrees(pose.heading()));
+        // Draw the measured pose every loop, including manual driving and init.
+        DashboardUtil.drawRobot(TelemetryUtil.packet.fieldOverlay(),
+                new Pose2d(pose.x(), pose.y(), pose.heading()), "#00C853");
         TelemetryUtil.packet.put("Drivetrain : mode", follower.mode());
         LogUtil.driveState.set(follower.mode().toString());
         if (follower.following()) {
