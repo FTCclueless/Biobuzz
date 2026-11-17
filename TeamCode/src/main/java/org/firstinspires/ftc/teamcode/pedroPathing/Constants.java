@@ -5,6 +5,7 @@ import com.pedropathing.algorithm.ForesightConfig;
 import com.pedropathing.controllers.Controller;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Matrix;
+import com.pedropathing.math.Vector2D;
 import com.pedropathing.revhub.drivetrains.Mecanum;
 import com.pedropathing.revhub.drivetrains.MecanumConfig;
 import com.pedropathing.revhub.localizers.PinpointConfig;
@@ -42,16 +43,31 @@ public class Constants {
         c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
     });
 
-    public static ForesightConfig foresightConfig = new ForesightConfig(c -> {
-        c.brake.set(Controller.pid(0.2, 0, 0));
-        c.headingFeedback.set(Controller.pid(2, 0, 0.01));
-        c.linearBrakeCoefficients.set(Matrix.diag(0.0788, 0.0788));
-        c.quadraticBrakeCoefficients.set(Matrix.diag(0.00191035, 0.00191035));
-        c.maxAchievableForwardVelocity.set(81.175);
-        c.maxAchievableStrafeVelocity.set(66.8431);
-        c.naturalForwardDeceleration.set(30.3333);
-        c.naturalStrafeDeceleration.set(62.58098);
-    });
+    public static ForesightConfig foresightConfig = new ForesightConfig(
+            c -> {
+                Controller primaryTranslationalForward = Controller.proportional(0.2488132775871428);
+                Controller secondaryTranslationalForward = Controller.proportional(0.09192985765522656);
+                Controller primaryTranslationalLateral = Controller.proportional(0.3933395931844317);
+                Controller secondaryTranslationalLateral = Controller.proportional(0.14532846945414796);
+
+                c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
+                c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
+
+                c.coast.set(Controller.proportionalFeedforward(0.012218102822423109));
+                c.brake.set(Controller.proportionalFeedforward(0.010385387399059642));
+
+                c.headingFeedback.set(Controller.proportional(4.160062788277549));
+                c.headingBrakeCoefficients.set(Vector2D.cartesian(0.0429748151459226, 0.006620055070319795));
+
+                c.linearBrakeCoefficients.set(Matrix.diag(0.07341984794255606, 0.0312803504972456));
+                c.quadraticBrakeCoefficients.set(Matrix.diag(0.0015587374537178818, 0.0023187603403183707));
+
+                c.maxAchievableForwardVelocity.set(81.48094428603838);
+                c.maxAchievableStrafeVelocity.set(68.58553802709417);
+                c.naturalForwardDeceleration.set(36.27108691045682);
+                c.naturalStrafeDeceleration.set(60.97113817838488);
+            }
+    );
 
     /** Plain Pedro follower, for the Pedro tuners (no Robot, no HardwareQueue). */
     public static Follower create(HardwareMap h) {

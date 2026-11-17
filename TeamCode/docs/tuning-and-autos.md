@@ -61,6 +61,34 @@ Then pick a heading for the path:
 
 ## Part 2 — What to tune, in order
 
+### Browser AutoTune (recommended)
+
+The project uses Pedro core/revhub 3.0.2 and AutoTune 1.0.3, matching the official
+Quickstart's Pedro versions, with FTC SDK 11.2.1 to preserve the existing AprilTag API.
+Use a matching 11.2.1 Driver Station app. Older SDK
+11.1 lacks `OpModeMeta.Flavor.UTILITY` and AutoTune fails when starting a step.
+`pedroPathing/control/Tuning.java` registers the Foresight procedure
+from `pedroPathing/procedures/ForesightTuner.java` with our existing Pinpoint and
+Mecanum configs. The procedure source comes from the Pedro Quickstart:
+https://github.com/Pedro-Pathing/Quickstart/tree/master/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/pedro/procedures
+
+1. Verify the motor names/directions and Pinpoint localization configuration first.
+2. Build and install the Robot Controller app, then connect to the robot's Wi-Fi.
+3. Open http://192.168.43.1:10158 and select the Foresight tuner. `Tuning` is a
+   procedure registration class, not a TeleOp to select on the Driver Station.
+4. Follow the browser prompts. The procedure drives forward, strafes, and spins;
+   leave room for the requested travel distances and drifting after power stops.
+5. At completion, copy the generated Java `ForesightConfig` into
+   `pedroPathing/Constants.java`, replacing the existing `foresightConfig` block.
+   Rebuild and install before running the path tests.
+
+The procedure uses the drivetrain and localizer directly, without constructing
+`Robot` or updating the shooter/intake. Existing measured constants remain in place
+until you replace them with the new results. Browser operation still needs to be
+checked on the actual Robot Controller.
+
+### Existing standalone tuners
+
 Run these in order. Each one depends on the one before it. The Pedro tuners are TeleOp
 opmodes in groups **1** to **4**. They build the follower straight from `Constants`, so the
 shooter and intake stay off.

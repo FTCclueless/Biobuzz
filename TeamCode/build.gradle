@@ -35,18 +35,15 @@ android {
     }
 }
 
-repositories {
-    maven { url 'https://central.sonatype.com/repository/maven-snapshots' }
-}
-
-// Pedro 3 only ships snapshots; pin one build so upstream pushes can't change the API under us.
-def pedroVersion = '3.0.0-20260909.040423-37'
+// Match the released Pedro Quickstart; keep the follower and tuning UI pinned.
+def pedroVersion = '3.0.2'
 
 dependencies {
     implementation project(':FtcRobotController')
     implementation 'com.google.ar:core:1.25.0'
-    implementation("com.pedropathing:revhub:$pedroVersion") { exclude group: 'com.pedropathing', module: 'core' }
+    implementation "com.pedropathing:revhub:$pedroVersion"
     implementation "com.pedropathing:core:$pedroVersion"
+    implementation 'com.pedropathing:tuning:1.0.3'
 
     testImplementation 'junit:junit:4.13.2'
 }

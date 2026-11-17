@@ -1,26 +1,24 @@
 repositories {
     mavenCentral()
+    maven { url 'https://repo.dairy.foundation/releases/' }
     google() // Needed for androidx
     maven { url = 'https://maven.brott.dev/' }
     maven { url 'https://jitpack.io' }
 }
 
 dependencies {
-    implementation 'org.firstinspires.ftc:Inspection:11.1.0'
-    implementation 'org.firstinspires.ftc:Blocks:11.1.0'
-    implementation 'org.firstinspires.ftc:RobotCore:11.1.0'
-    implementation 'org.firstinspires.ftc:RobotServer:11.1.0'
-    implementation 'org.firstinspires.ftc:OnBotJava:11.1.0'
-    implementation 'org.firstinspires.ftc:Hardware:11.1.0'
-    implementation 'org.firstinspires.ftc:FtcCommon:11.1.0'
-    implementation 'org.firstinspires.ftc:Vision:11.1.0'
+    implementation 'org.firstinspires.ftc:Inspection:11.2.1'
+    implementation 'org.firstinspires.ftc:Blocks:11.2.1'
+    implementation 'org.firstinspires.ftc:RobotCore:11.2.1'
+    implementation 'org.firstinspires.ftc:RobotServer:11.2.1'
+    implementation 'org.firstinspires.ftc:OnBotJava:11.2.1'
+    implementation 'org.firstinspires.ftc:Hardware:11.2.1'
+    implementation 'org.firstinspires.ftc:FtcCommon:11.2.1'
+    implementation 'org.firstinspires.ftc:Vision:11.2.1'
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'org.tensorflow:tensorflow-lite-task-vision:0.4.3'
     runtimeOnly 'org.tensorflow:tensorflow-lite:2.12.0'
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'org.firstinspires.ftc:Vision:8.2.0'
     implementation('com.acmerobotics.dashboard:dashboard:0.5.1') { // downgraded from 0.4.14
         exclude group: 'org.firstinspires.ftc'
     }
 }
-

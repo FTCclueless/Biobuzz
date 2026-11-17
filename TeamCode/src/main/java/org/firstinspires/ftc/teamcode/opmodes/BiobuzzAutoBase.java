@@ -29,7 +29,7 @@ public class BiobuzzAutoBase extends LinearOpMode
         }
 
         // example of field agnostic
-        //robot.drivetrain.goToPoint(BiobuzzField.field().garden());
+        robot.drivetrain.goToPoint(BiobuzzField.field().garden());
     }
 
     private void follow(Path path) {
