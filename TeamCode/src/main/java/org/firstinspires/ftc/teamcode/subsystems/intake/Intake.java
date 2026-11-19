@@ -222,8 +222,8 @@ public class Intake {
             return 0;
         }*/
         pivotDown(true);
-        intakeMotor.setTargetPowerSmooth(rollerIntakePower * (reversed ? -1 : 1), 0.1);
-        transferMotor.setTargetPowerSmooth(transferIntakePower * (reversed ? -1 : 1), 0.1);
+        intakeMotor.setTargetPower(rollerIntakePower * (reversed ? -1 : 1));
+        transferMotor.setTargetPower(transferIntakePower * (reversed ? -1 : 1));
 
         return reversed ? -1 : 1;
     }
