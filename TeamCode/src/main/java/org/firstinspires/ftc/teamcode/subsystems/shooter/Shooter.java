@@ -41,7 +41,7 @@ public class Shooter {
     public static double hoodSweep = Math.toRadians(26.43);
     public static double hoodGearRatio = 192.0 / 35.0;
 
-    public static double latchBlockPos = 0.32, latchOpenPos = 0.515;
+    public static double latchBlockPos = 0.1, latchOpenPos = 0.3;
 
     public Vector3 ballTarget;
     public Vector3 targetOverride = null;
@@ -232,7 +232,7 @@ public class Shooter {
         canvas.setStroke("#808080");
         canvas.setStrokeWidth(1);
         canvas.strokeLine(ballTarget.x, ballTarget.y, ROBOT_POSITION.x, ROBOT_POSITION.y);
-        canvas.setStroke(Globals.isRed ? "#ff0000" : "#0000ff");
+        canvas.setStroke(ballTarget.y < 0 ? "#ff0000" : "#0000ff");
         canvas.setStrokeWidth(2);
         canvas.strokeCircle(ballTarget.x, ballTarget.y, 2.5);
     }

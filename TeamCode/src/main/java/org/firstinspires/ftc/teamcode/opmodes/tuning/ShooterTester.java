@@ -31,7 +31,7 @@ public class ShooterTester extends LinearOpMode {
     public static boolean RED_HIVE = true;
     public static int CELL_SIDE = 0; // +1 = +x cell, -1 = -x cell, 0 = whichever is nearer
 
-    public static double FLYWHEEL_VELOCITY = 300;
+    public static double FLYWHEEL_VELOCITY = 0;
     public static double HOOD_LAUNCH_DEG = 45;
     public static boolean TRACK_HIVE = true;
     public static double TURRET_DEG = 0;
@@ -56,32 +56,33 @@ public class ShooterTester extends LinearOpMode {
 
         while (opModeInInit()) {
             robot.drivetrain.setPoseEstimate(startPose());
+            shooter.targetOverride = selectedCell(RED_HIVE, CELL_SIDE);
             robot.update();
             telemetry.addLine("Shooter Tester. Keep the robot still: odometry is zeroed at init.");
             telemetry.addLine("Place it at START_X / START_Y / START_HEADING_DEG (field center = 0, 0).");
-            telemetry.addLine("A spin up   B stop   hold RT: open blocker + feed   X: reset pose to start");
+            telemetry.addLine("After START, flywheel follows Dashboard FLYWHEEL_VELOCITY (0 stops).");
+            telemetry.addLine("Dashboard RED_HIVE selects alliance. CELL_SIDE: -1 = -X, 0 = nearest, 1 = +X.");
+            telemetry.addLine("Hold RT: open blocker + feed   X: reset pose to start");
             telemetry.addLine("dpad up: log MADE   dpad down: log MISSED (Logcat tag ShotLog)");
             telemetry.addData("start pose", startPose());
             telemetry.update();
         }
 
-        boolean spinning = false, lastUp = false, lastDown = false;
+        boolean lastUp = false, lastDown = false;
         String lastLog = "";
         while (opModeIsActive()) {
-            if (gamepad1.a) spinning = true;
-            if (gamepad1.b) spinning = false;
             if (gamepad1.x) robot.drivetrain.setPoseEstimate(startPose());
             boolean firing = gamepad1.right_trigger > 0.5;
 
-            Vector3 cell = CELL_SIDE == 0 ? BiobuzzField.nearestHiveCell(RED_HIVE, ROBOT_POSITION)
-                    : BiobuzzField.hiveCell(RED_HIVE, CELL_SIDE);
+            boolean redHive = RED_HIVE;
+            Vector3 cell = selectedCell(redHive, CELL_SIDE);
             shooter.targetOverride = cell;
             shooter.turretTrackInManual = TRACK_HIVE;
             //if (!TRACK_HIVE) shooter.turret.setTargetAngle(Math.toRadians(TURRET_DEG));
 
             double hoodServo = Utils.minMaxClip(
                     (Math.toRadians(HOOD_LAUNCH_DEG) - Shooter.hoodSweep) * Shooter.hoodGearRatio, 0, 1.6);
-            shooter.flywheel.setTargetVelocity(spinning ? FLYWHEEL_VELOCITY : 0);
+            shooter.flywheel.setTargetVelocity(FLYWHEEL_VELOCITY);
             shooter.setHoodAngle(hoodServo);
             shooter.setShooterBlocker(!(firing));
             if (FEED || firing) robot.intake.feed(); else robot.intake.stop();
@@ -92,19 +93,15 @@ public class ShooterTester extends LinearOpMode {
             double dist = Math.hypot(cell.x - ROBOT_POSITION.x, cell.y - ROBOT_POSITION.y);
             double vel = shooter.flywheel.getFilteredVelocity();
             double battery = robot.sensors.getVoltage();
-            if (gamepad1.dpad_up && !lastUp) lastLog = logShot(true, dist, vel, battery);
-            if (gamepad1.dpad_down && !lastDown) lastLog = logShot(false, dist, vel, battery);
+
             lastUp = gamepad1.dpad_up;
             lastDown = gamepad1.dpad_down;
 
-            TelemetryUtil.packet.put("ShooterTester : target vel", spinning ? FLYWHEEL_VELOCITY : 0);
             TelemetryUtil.packet.put("ShooterTester : actual vel", vel);
-            telemetry.addData("target cell", "%s hive, %s side  (%.1f, %.1f)", RED_HIVE ? "RED" : "BLUE",
+            telemetry.addData("target cell", "%s hive, %s side  (%.1f, %.1f)", redHive ? "RED" : "BLUE",
                     cell.x >= 0 ? "+x" : "-x", cell.x, cell.y);
             telemetry.addData("DISTANCE to cell (in)", "%.1f", dist);
             telemetry.addData("pose", ROBOT_POSITION);
-            telemetry.addData("flywheel (in/s)", "%.0f / %.0f  %s", vel, spinning ? FLYWHEEL_VELOCITY : 0,
-                    spinning && shooter.atVel() ? "AT SPEED" : "");
             telemetry.addData("hood launch (deg)", "%.1f  (servo %.3f)", HOOD_LAUNCH_DEG, hoodServo);
             //telemetry.addData("turret (deg)", "%.1f / %.1f%s", Math.toDegrees(shooter.turret.getAngle()),
                     //Math.toDegrees(shooter.turret.getTargetAngle()), shooter.turret.atLimit() ? "  AT LIMIT" : "");
@@ -120,9 +117,14 @@ public class ShooterTester extends LinearOpMode {
         return new Pose2d(START_X, START_Y, Math.toRadians(START_HEADING_DEG));
     }
 
-    private static String logShot(boolean made, double dist, double vel, double battery) {
+    private static Vector3 selectedCell(boolean redHive, int cellSide) {
+        return cellSide == 0 ? BiobuzzField.nearestHiveCell(redHive, ROBOT_POSITION)
+                : BiobuzzField.hiveCell(redHive, cellSide);
+    }
+
+    private static String logShot(boolean made, double dist, double targetVel, double vel, double battery) {
         String line = String.format(Locale.US, "%s,dist=%.1f,targetVel=%.0f,actualVel=%.0f,hoodDeg=%.1f,battery=%.2f",
-                made ? "MADE" : "MISSED", dist, FLYWHEEL_VELOCITY, vel, HOOD_LAUNCH_DEG, battery);
+                made ? "MADE" : "MISSED", dist, targetVel, vel, HOOD_LAUNCH_DEG, battery);
         Log.i("ShotLog", line);
         return line;
     }
