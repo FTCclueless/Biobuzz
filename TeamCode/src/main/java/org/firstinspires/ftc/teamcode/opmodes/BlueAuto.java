@@ -39,6 +39,10 @@ public class BlueAuto extends LinearOpMode {
         robot.shooter.setShooterBlocker(true);
 
         Path test = line(new Pose(0, 0), new Pose(SIZE, 0)).constant(0);
+        Path toFlower = line(new Pose(0, 0), new Pose(-SIZE/2+24, 0)).constant(0);
+        Path toIntake = line(new Pose(-SIZE/2+24, 0), new Pose(-36, 0)).constant(0);
+        Path toGarden = line(new Pose(-36, 0), new Pose(48, 0)).constant(0);
+        Path park = line(new Pose(48, 0), new Pose(48, -4*24)).constant(0);
 
         telemetry.addLine("Example Auto");
         telemetry.update();
@@ -53,7 +57,15 @@ public class BlueAuto extends LinearOpMode {
 
         robot.shooter.reqAim(true);
 
-        follow(test);
+        shoot(test, false); // fire preloads
+        robot.intake.startPollenRetrieval();
+        follow(toFlower);
+        robot.intake.intake();
+        follow(toIntake);
+        follow(toGarden);
+        shoot(test, false);
+        follow(park);
+
         Globals.AUTO_ENDING_POSE = Globals.ROBOT_POSITION.clone();
 
         telemetry.addData("done in (s)", "%.1f", (System.currentTimeMillis() - startedAt) / 1000.0);
