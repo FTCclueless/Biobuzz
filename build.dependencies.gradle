@@ -18,9 +18,12 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'org.tensorflow:tensorflow-lite-task-vision:0.4.3'
     runtimeOnly 'org.tensorflow:tensorflow-lite:2.12.0'
-    // Dashboard 0.5.1 requests /dash/decode.webp. TeamCode overrides that asset with
-    // FIRST's BIOBUZZ Figure 9-2, oriented for Dashboard 0.5.1 (+X up, +Y left).
-    implementation('com.acmerobotics.dashboard:dashboard:0.5.1') {
-        exclude group: 'org.firstinspires.ftc'
-    }
+    // Pedro's AutoTune (com.pedropathing:tuning) pulls in Sloth 0.3.2. Sloth replaces the class
+    // loading/scanning that stock FTC Dashboard relies on, so stock Dashboard's @Config edits and
+    // telemetry stop working. Slothboard is Dashboard 0.6.0 rebuilt for Sloth: same
+    // com.acmerobotics.dashboard packages, no code changes. Keep its Sloth version (0.3.2) in step
+    // with the one `gradlew :TeamCode:dependencies` shows under com.pedropathing:tuning.
+    // It still requests /dash/decode.webp, which TeamCode overrides with FIRST's BIOBUZZ
+    // Figure 9-2 (+X up, +Y left).
+    implementation 'com.acmerobotics.slothboard:dashboard:0.3.2+0.6.0'
 }
