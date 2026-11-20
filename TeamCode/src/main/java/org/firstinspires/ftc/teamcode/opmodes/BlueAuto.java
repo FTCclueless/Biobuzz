@@ -63,8 +63,8 @@ public class BlueAuto extends LinearOpMode {
         robot.intake.intake();
         follow(toIntake);
         follow(toGarden);
-        shoot(test, false);
-        follow(park);
+        robot.intake.feed();
+        shoot(park, true);
 
         Globals.AUTO_ENDING_POSE = Globals.ROBOT_POSITION.clone();
 
