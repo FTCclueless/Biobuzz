@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Robot;
+import org.firstinspires.ftc.teamcode.field.BiobuzzField;
 import org.firstinspires.ftc.teamcode.subsystems.intake.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.shooter.Shooter;
 import org.firstinspires.ftc.teamcode.utils.ButtonToggle;
@@ -33,7 +34,12 @@ public class Teleop extends LinearOpMode {
         robot.shooter.setManual(false);
         robot.shooter.setShooterBlocker(true);
 
-        robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
+        // Aiming uses the distance from the field pose to our hive, so the pose must be real:
+        // carry over where auto ended, else start at our alliance's start pose.
+        Pose2d autoEnd = Globals.AUTO_ENDING_POSE;
+        boolean fromAuto = autoEnd.x != 0 || autoEnd.y != 0 || autoEnd.heading != 0;
+        BiobuzzField.setSide(Globals.isRed ? BiobuzzField.Side.RED : BiobuzzField.Side.BLUE);
+        robot.drivetrain.setPoseEstimate(fromAuto ? autoEnd.clone() : BiobuzzField.field().start());
 
 
         ButtonToggle lb1 = new ButtonToggle();
@@ -65,6 +71,13 @@ public class Teleop extends LinearOpMode {
         final double triggerThresh = 0.2;
 
         while (opModeInInit()) {
+            // Alliance: gamepad1 X = blue, B = red. Picks which hive the shooter aims at.
+            if ((gamepad1.x && Globals.isRed) || (gamepad1.b && !Globals.isRed)) {
+                BiobuzzField.setSide(gamepad1.b ? BiobuzzField.Side.RED : BiobuzzField.Side.BLUE);
+                if (!fromAuto) robot.drivetrain.setPoseEstimate(BiobuzzField.field().start());
+            }
+            telemetry.addData("Alliance (gp1 X blue / B red)", Globals.isRed ? "RED" : "BLUE");
+            telemetry.addData("Start pose", fromAuto ? "from auto " + ROBOT_POSITION : "alliance start " + ROBOT_POSITION);
             robot.sensors.update();
             robot.drivetrain.update();
             TelemetryUtil.sendTelemetry();
@@ -241,6 +254,12 @@ public class Teleop extends LinearOpMode {
             robot.update();
 
             telemetry.addData("shooter state", robot.shooter.state);
+            robot.shooter.updateBallTarget(); // IDLE doesn't refresh it, and the half can change while driving
+            telemetry.addData("alliance", Globals.isRed ? "RED" : "BLUE");
+            telemetry.addData("hive distance (in)", "%.1f", Math.hypot(robot.shooter.ballTarget.x - ROBOT_POSITION.x,
+                    robot.shooter.ballTarget.y - ROBOT_POSITION.y));
+            telemetry.addData("table velocity / hood", "%.0f in/s / %.2f",
+                    robot.shooter.minFlywheelVelocity, robot.shooter.targetHoodAngle);
             telemetry.addData("flywheelOn (manual)", flywheelOn);
             telemetry.addData("flywheelAtVel", robot.shooter.atVel());
             telemetry.addData("turret tracking available", false);
