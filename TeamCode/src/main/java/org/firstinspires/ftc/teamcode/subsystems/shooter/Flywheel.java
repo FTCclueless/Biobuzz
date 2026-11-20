@@ -47,13 +47,16 @@ public class Flywheel {
     // Integral trim, V per (in/s * s). The LQR gain alone is P-only and tops out near
     // kV*e^(-dt/tau)/(1-e^(-dt/tau)) (~0.09 V per in/s here), so a 1 V feedforward error
     // leaves a ~10 in/s offset whatever MAX_VELOCITY_ERROR is. This removes it.
-    public static double kI = 0.2;
+    public static double kI = 0.1;
     /** Only integrate within this error (in/s), so spin-up and shot dips don't wind it up. */
     public static double I_BAND = 20.0;
     /** Most the integral may add or remove (V). */
     public static double I_MAX = 3.0;
 
     public static double CONTROL_DT = 0.02;
+    // Command-to-measurement delay (s) the LQR predicts across: the hub's velocity reading and
+    // the motor write each lag about a loop. Without it the near-deadbeat gain oscillates.
+    public static double LATENCY = 0.04;
 
     public static final FlywheelFeedforward FF_TABLE = new FlywheelFeedforward();
 
@@ -82,7 +85,7 @@ public class Flywheel {
     private final DcMotorEx motorRaw, encoder;
 
     private LQRController controller;
-    private double builtWith_kV, builtWith_kA, builtWith_kS, builtWith_dt;
+    private double builtWith_kV, builtWith_kA, builtWith_kS, builtWith_dt, builtWith_latency;
     private double builtWith_maxError, builtWith_maxEffort;
 
     private double targetVelocity = 0.0;
@@ -120,11 +123,13 @@ public class Flywheel {
                 .tolerances(new double[]{MAX_VELOCITY_ERROR}, MAX_EFFORT)
 
                 .outputLimits(0.0, 12.0)
+                .latencyCompensation(LATENCY)
                 .voltageCompensation(true);
         builtWith_kV = kV;
         builtWith_kA = kA;
         builtWith_kS = kS;
         builtWith_dt = CONTROL_DT;
+        builtWith_latency = LATENCY;
         builtWith_maxError = MAX_VELOCITY_ERROR;
         builtWith_maxEffort = MAX_EFFORT;
     }
@@ -132,6 +137,7 @@ public class Flywheel {
     private boolean constantsChanged() {
         return kV != builtWith_kV || kA != builtWith_kA || kS != builtWith_kS
                 || CONTROL_DT != builtWith_dt
+                || LATENCY != builtWith_latency
                 || MAX_VELOCITY_ERROR != builtWith_maxError
                 || MAX_EFFORT != builtWith_maxEffort;
     }

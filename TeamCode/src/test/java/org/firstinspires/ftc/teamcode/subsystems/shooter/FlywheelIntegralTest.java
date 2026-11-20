@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.firstinspires.ftc.teamcode.control.LQRController;
 import org.firstinspires.ftc.teamcode.control.MechanismModel;
+import org.firstinspires.ftc.teamcode.control.StatePredictor;
 import org.junit.Test;
 
 public class FlywheelIntegralTest {
@@ -41,5 +42,13 @@ public class FlywheelIntegralTest {
     public void integralRemovesTheOffset() {
         assertEquals(470, settle(0.2, 1.1), 1.0);
         assertEquals(470, settle(0.2, -1.1), 1.0);
+    }
+
+    @Test
+    public void predictorHoldsSteadySpeedWhenVoltageJustCoversFriction() {
+        // At steady state the wheel neither speeds up nor slows down, so the prediction must match.
+        StatePredictor p = StatePredictor.create(MechanismModel.flywheel(kV, kA, kS), 0.04);
+        p.update(0, 470, kS + kV * 470);
+        assertEquals(470, p.velocity(), 0.01);
     }
 }

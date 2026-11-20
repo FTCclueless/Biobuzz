@@ -5,6 +5,7 @@ public final class StatePredictor {
 
     private final boolean position;
     private final double kG;
+    private final double kS;
     private final double a00, a01, a10, a11;
     private final double b0, b1;
 
@@ -15,6 +16,7 @@ public final class StatePredictor {
     private StatePredictor(MechanismModel model, Matrix ad, Matrix bd) {
         this.position = model.type == MechanismModel.Type.POSITION;
         this.kG = model.kG;
+        this.kS = model.kS;
         if (position) {
             this.a00 = ad.get(0, 0);
             this.a01 = ad.get(0, 1);
@@ -58,7 +60,9 @@ public final class StatePredictor {
             predictedVelocity = a10 * measuredPosition + a11 * measuredVelocity + b1 * u;
         } else {
             predictedPosition = measuredPosition;
-            predictedVelocity = a00 * measuredVelocity + b0 * lastOutput;
+            // kS volts go to friction, not acceleration; without this the prediction runs fast.
+            double friction = Math.abs(measuredVelocity) > 1e-6 ? Math.copySign(kS, measuredVelocity) : 0;
+            predictedVelocity = a00 * measuredVelocity + b0 * (lastOutput - friction);
         }
         if (trust < 1.0) {
             predictedPosition = measuredPosition + (predictedPosition - measuredPosition) * trust;
