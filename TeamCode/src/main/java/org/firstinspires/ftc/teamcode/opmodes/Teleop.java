@@ -23,6 +23,9 @@ import java.util.Locale;
 @Config
 @TeleOp(name = "Teleop Main")
 public class Teleop extends LinearOpMode {
+    /** gamepad1 dpad up toggles this fixed shot. Launch angle in degrees, like ShotTable2. */
+    public static double PRESET_FLYWHEEL = 400;
+    public static double PRESET_LAUNCH_DEG = 50;
 
     public void runOpMode() {
         Globals.RUNMODE = RunMode.TELEOP;
@@ -52,6 +55,7 @@ public class Teleop extends LinearOpMode {
         ButtonToggle lt2 = new ButtonToggle();
         ButtonToggle rt1 = new ButtonToggle();
         ButtonToggle back1 = new ButtonToggle();
+        ButtonToggle up1 = new ButtonToggle();
 
         ButtonToggle a2 = new ButtonToggle();
         ButtonToggle b2 = new ButtonToggle();
@@ -161,6 +165,28 @@ public class Teleop extends LinearOpMode {
             boolean midHeld = y1.isHeld(gamepad1.y, 500);
             boolean farHeld = x1.isHeld(gamepad1.x, 500);
             Shooter.forceUpdateVelBool = false;
+
+            // Fixed-shot preset, from either mode. Shoot with right bumper as in manual; press again for off.
+            if (up1.isClicked(gamepad1.dpad_up)) {
+                boolean presetOn = robot.shooter.state == Shooter.State.TEST
+                        && robot.shooter.flywheel.getTargetVelocity() == PRESET_FLYWHEEL;
+                if (presetOn) {
+                    robot.shooter.setShooter(Shooter.Dist.OFF);
+                    flywheelOn = false;
+                    atSpeedRumble = false;
+                } else {
+                    if (robot.shooter.state != Shooter.State.TEST) {
+                        robot.shooter.reqShoot(false);
+                        robot.shooter.reqAim(false);
+                        robot.shooter.reqStop(false);
+                        robot.shooter.setManual(true);
+                    }
+                    robot.shooter.setShooter(PRESET_FLYWHEEL, PRESET_LAUNCH_DEG);
+                    flywheelOn = true;
+                    atSpeedRumble = true;
+                    confirmation = true;
+                }
+            }
 
             if (robot.shooter.state == Shooter.State.TEST) {
 
