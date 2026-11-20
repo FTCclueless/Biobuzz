@@ -16,9 +16,9 @@ import java.util.Locale;
 @Config
 @Autonomous(name = "Flywheel Auto Tuner", group = "test")
 public class FlywheelAutoTuner extends LinearOpMode {
-    public static double TARGET_VELOCITY = 530.0;
+    public static double TARGET_VELOCITY = 470.0; // keep ~1 V below battery: the FF_TABLE needs ~11.9 V at 530
 
-    public static double LOW_VELOCITY = 430.0;
+    public static double LOW_VELOCITY = 370.0;
 
     public static double START_ERROR = 30.0;
 
