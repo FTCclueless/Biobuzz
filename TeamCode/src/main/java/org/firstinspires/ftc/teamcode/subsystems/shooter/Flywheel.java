@@ -40,7 +40,9 @@ public class Flywheel {
 
     public static double kS = 1.5667;
 
-    public static double MAX_VELOCITY_ERROR = 14.7;
+    // LQR stiffness. Below ~30 the gain stops rising (one-step deadbeat limit) and loop delay makes
+    // it overshoot; near top speed there are only ~1.5 V of headroom anyway, so softer costs little.
+    public static double MAX_VELOCITY_ERROR = 100.0;
 
     public static double MAX_EFFORT = 8.0;
 
@@ -49,7 +51,7 @@ public class Flywheel {
     // leaves a ~10 in/s offset whatever MAX_VELOCITY_ERROR is. This removes it.
     public static double kI = 0.1;
     /** Only integrate within this error (in/s), so spin-up and shot dips don't wind it up. */
-    public static double I_BAND = 20.0;
+    public static double I_BAND = 60.0;
     /** Most the integral may add or remove (V). */
     public static double I_MAX = 3.0;
 
@@ -71,6 +73,11 @@ public class Flywheel {
     public static boolean USE_FF_TABLE = true;
 
     public static double MAX_SPIN_UP_ACCEL = 900.0;
+
+    // Current limit: motor current is proportional to (applied V - back-EMF V), and back-EMF at a
+    // speed is what the FF_TABLE says holds that speed. Capping the excess caps the current,
+    // so the wheel still gets full power once it is near speed. Raise for faster spin-up.
+    public static double MAX_VOLTS_ABOVE_BACK_EMF = 6.0;
 
     public static double SPIN_UP_THRESH = 150.0;
 
@@ -150,7 +157,9 @@ public class Flywheel {
                 ? VELOCITY_FILTER_LOW : VELOCITY_FILTER_HIGH;
         filteredVelocity = filteredVelocity * (1 - alpha) + actualVelocity * alpha;
 
-        double dt = robot.sensors.loopTime > 0 ? robot.sensors.loopTime : CONTROL_DT;
+        // The first loop's loopTime spans since boot; a pause can be long too. Neither is a real step.
+        double dt = robot.sensors.loopTime > 0 && robot.sensors.loopTime < 0.1
+                ? robot.sensors.loopTime : CONTROL_DT;
         if (filteredVelocity < SPIN_UP_THRESH && targetVelocity > rampedTarget) {
             rampedTarget = Math.min(targetVelocity, rampedTarget + MAX_SPIN_UP_ACCEL * dt);
         } else {
@@ -166,6 +175,9 @@ public class Flywheel {
             power = 0;
         } else {
             controller.setVelocityGoal(rampedTarget);
+            // Inside the controller, so the latency predictor and anti-windup see the capped volts.
+            controller.outputLimits(0.0, Math.min(12.0,
+                    steadyVolts(actualVelocity) + MAX_VOLTS_ABOVE_BACK_EMF));
             power = controller.calculateVelocity(filteredVelocity, robot.sensors.getVoltage(),
                     feedforwardVolts(rampedTarget, dt) + integral);
             integral = integrate(integral, rampedTarget - filteredVelocity, dt, controller.isSaturated());
@@ -197,8 +209,12 @@ public class Flywheel {
 
         refAccel = Math.max(-MAX_SPIN_UP_ACCEL, Math.min(MAX_SPIN_UP_ACCEL, refAccel));
 
-        double steady = usingTable() ? FF_TABLE.volts(reference) : kS + kV * reference;
-        return steady + kA * refAccel;
+        return steadyVolts(reference) + kA * refAccel;
+    }
+
+    /** Volts that hold this speed: equal to the motors' back-EMF plus friction there. */
+    private static double steadyVolts(double velocity) {
+        return usingTable() ? FF_TABLE.volts(velocity) : kS + kV * velocity;
     }
 
     static double integrate(double integral, double error, double dt, boolean saturated) {
@@ -207,7 +223,7 @@ public class Flywheel {
         return Math.max(-I_MAX, Math.min(I_MAX, integral + kI * error * dt));
     }
 
-    public boolean usingTable() { return USE_FF_TABLE && !FF_TABLE.isEmpty(); }
+    public static boolean usingTable() { return USE_FF_TABLE && !FF_TABLE.isEmpty(); }
 
     private void detectShot(double rawVelocity) {
         long now = System.currentTimeMillis();

@@ -144,8 +144,9 @@ heading when TeleOp locks onto the goal. Tune them by hand.
 run (about 2 minutes), with no pasting in between:
 
 1. **Characterize** — measures `kV`/`kA`/`kS` and `FF_TABLE`, and applies them live.
-2. **Sweep** — retries the closed loop at progressively larger integral gain `kI`, scoring
-   each trial. (`MAX_VELOCITY_ERROR` is not swept: at a 20 ms loop its LQR gain barely changes.)
+2. **Sweep** — three stages, one knob at a time, each setting run twice and scored on its worse
+   run: `LATENCY` (keeps the calmest), then `MAX_VELOCITY_ERROR` gentle → stiff, then `kI`
+   gentle → strong. A stage where nothing passes keeps its starting value.
 3. **Choose** — the fastest trial that passed. If the next stiffer trial failed, the winner is
    at the edge of stability, so it backs off one step to keep a margin.
 4. **Verify** — re-runs the test on the chosen setting.

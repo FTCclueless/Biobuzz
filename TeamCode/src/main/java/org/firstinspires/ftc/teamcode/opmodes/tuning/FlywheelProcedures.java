@@ -31,6 +31,9 @@ final class FlywheelProcedures {
 
     /** Each power step must be at least this much faster than the last (in/s). */
     static final double MIN_SPEED_RISE = 10;
+    /** Open-loop steps ramp power at this rate (power per second) to limit the current spike. */
+    static final double OPEN_LOOP_RAMP = 1.0;
+
     /** The highest power step must reach at least this (in/s). */
     static final double MIN_TOP_SPEED = 100;
 
@@ -101,7 +104,7 @@ final class FlywheelProcedures {
         while (op.opModeIsActive()) {
             double t = (System.nanoTime() - start) / 1e9;
             if (t > holdSeconds) break;
-            openLoop(power);
+            openLoop(Math.min(power, OPEN_LOOP_RAMP * t));
             if (t > holdSeconds * (1.0 - steadyFraction)) {
                 sumV += fw.getRawVelocity();
                 sumVolts += power * robot.sensors.getVoltage();
