@@ -27,7 +27,6 @@ final class FlywheelProcedures {
 
     static final class Point {
         double power, volts, velocity;
-        double mismatch; // mean |encoder 1 - encoder 2|, in/s
     }
 
     /** Each power step must be at least this much faster than the last (in/s). */
@@ -44,7 +43,6 @@ final class FlywheelProcedures {
     static final class Model {
         double kV = Double.NaN, kS = Double.NaN, kA = Double.NaN, tau = Double.NaN;
         int brownouts;
-        double maxMismatch; // worst mean |encoder 1 - encoder 2| over the steps, in/s
         final List<Point> points = new ArrayList<>();
 
         String problem() {
@@ -113,10 +111,7 @@ final class FlywheelProcedures {
                     pt = null;
                 }
             }
-            if (pt != null) {
-                m.points.add(pt);
-                m.maxMismatch = Math.max(m.maxMismatch, pt.mismatch);
-            }
+            if (pt != null) m.points.add(pt);
         }
         coast(restSeconds);
         m.tau = spinUpTimeConstant(kaPower, holdSeconds);
@@ -131,7 +126,7 @@ final class FlywheelProcedures {
 
     private Point holdOpenLoop(double power, double holdSeconds, double steadyFraction) {
         long start = System.nanoTime();
-        double sumV = 0, sumVolts = 0, sumMismatch = 0;
+        double sumV = 0, sumVolts = 0;
         int n = 0;
         while (op.opModeIsActive()) {
             double t = (System.nanoTime() - start) / 1e9;
@@ -140,7 +135,6 @@ final class FlywheelProcedures {
             if (t > holdSeconds * (1.0 - steadyFraction)) {
                 sumV += fw.getRawVelocity();
                 sumVolts += power * robot.sensors.getVoltage();
-                sumMismatch += fw.getEncoderMismatch();
                 n++;
             }
             status(String.format(Locale.US, "holding power %.2f  (%.1f / %.1f s)",
@@ -151,7 +145,6 @@ final class FlywheelProcedures {
         p.power = power;
         p.velocity = sumV / n;
         p.volts = sumVolts / n;
-        p.mismatch = sumMismatch / n;
         return p;
     }
 
@@ -187,11 +180,6 @@ final class FlywheelProcedures {
 
     static List<String> pasteLines(Model m) {
         List<String> out = new ArrayList<>();
-        // Not a failure: the tune is still valid on the slower (true) encoder, but the belt needs fixing.
-        if (m.maxMismatch > Flywheel.MAX_ENCODER_DISAGREEMENT) {
-            out.add(String.format(Locale.US, "WARNING: encoders differ by up to %.0f in/s. One belt is slipping"
-                    + " (or a pulley isn't 20T:30T). Tighten it; tuned on the slower encoder.", m.maxMismatch));
-        }
         if (m.brownouts > 0) out.add("WARNING: " + m.brownouts + " step(s) redone after hub brownouts. Check power wiring.");
         out.add("=== paste into Flywheel ===");
         out.add(String.format(Locale.US, "kV = %.6f;", m.kV));
@@ -286,7 +274,6 @@ final class FlywheelProcedures {
     private void status(String line) {
         telemetry.addLine(line);
         telemetry.addData("velocity (in/s)", "%.1f", fw.getRawVelocity());
-        telemetry.addData("encoder mismatch (in/s)", "%.1f", fw.getEncoderMismatch());
         telemetry.update();
     }
 
