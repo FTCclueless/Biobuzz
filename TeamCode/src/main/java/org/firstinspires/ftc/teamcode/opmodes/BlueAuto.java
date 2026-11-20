@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Robot;
+import org.firstinspires.ftc.teamcode.field.BiobuzzField;
 import org.firstinspires.ftc.teamcode.subsystems.shooter.Shooter;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
@@ -29,22 +30,24 @@ public class BlueAuto extends LinearOpMode {
     @Override
     public void runOpMode() {
         Globals.RUNMODE = RunMode.AUTO;
-        Globals.isRed = false;
+        BiobuzzField.setSide(BiobuzzField.Side.BLUE);
 
         robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);
-        robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
+        Pose2d startBase = BiobuzzField.field().start();
+        robot.drivetrain.setPoseEstimate(startBase);
+        Pose startPose = new Pose(startBase.x, startBase.y, startBase.heading);
 
         robot.shooter.state = Shooter.State.TEST;
         robot.shooter.setShooterBlocker(true);
 
-        Path test = line(new Pose(0, 0), new Pose(SIZE, 0)).constant(0);
-        Path toFlower = line(new Pose(0, 0), new Pose(-SIZE/2+24, 0)).constant(0);
-        Path toIntake = line(new Pose(-SIZE/2+24, 0), new Pose(-36, 0)).constant(0);
-        Path toGarden = line(new Pose(-36, 0), new Pose(48, 0)).constant(0);
-        Path park = line(new Pose(48, 0), new Pose(48, -4*24)).constant(0);
+        Path test = line(new Pose(0, 0).plus(startPose), new Pose(SIZE, 0).plus(startPose)).constant(0);
+        Path toFlower = line(new Pose(0, 0).plus(startPose), new Pose(-SIZE/2+24, 0).plus(startPose)).constant(0);
+        Path toIntake = line(new Pose(-SIZE/2+24, 0).plus(startPose), new Pose(-36, 0).plus(startPose)).constant(0);
+        Path toGarden = line(new Pose(-36, 0).plus(startPose), new Pose(48, 0).plus(startPose)).constant(0);
+        Path park = line(new Pose(48, 0).plus(startPose), new Pose(48, -4*24).plus(startPose)).constant(0);
 
-        telemetry.addLine("Example Auto");
+        telemetry.addLine("Blue Auto");
         telemetry.update();
         while (opModeInInit()) robot.update();
         if (isStopRequested()) return;
