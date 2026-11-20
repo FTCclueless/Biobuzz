@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.utils;
 
+import com.pedropathing.math.Pose;
+
 public class Utils {
     public Utils() {}
 
@@ -30,5 +32,10 @@ public class Utils {
         double deltaX = point1.x - point2.x;
         double deltaY = point1.y - point2.y;
         return Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2));
+    }
+
+    public static Pose fromPose2d(Pose2d p2d)
+    {
+        return new Pose(p2d.x, p2d.y, p2d.heading);
     }
 }

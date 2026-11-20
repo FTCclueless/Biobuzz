@@ -55,7 +55,7 @@ public class Robot {
         intake = new Intake(this);
         shooter = new Shooter(this);
        // flower = new Flower(this);
-        if (useVision) {
+        if (false) {
             balls = new BallDetection(hardwareMap);
             balls.start();
         }

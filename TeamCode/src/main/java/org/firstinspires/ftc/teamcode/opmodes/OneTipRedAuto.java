@@ -15,6 +15,7 @@ import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 import org.firstinspires.ftc.teamcode.utils.RunMode;
+import org.firstinspires.ftc.teamcode.utils.Utils;
 
 @Config
 @Autonomous(name = "One Tip Red Auto", group = "Auto")
@@ -42,7 +43,7 @@ public class OneTipRedAuto extends LinearOpMode
         robot.shooter.setShooterBlocker(true);
 
         Path test = line(new Pose(0, 0).plus(startPose), new Pose(SIZE, 0).plus(startPose)).constant(0);
-        Path toFlower = line(new Pose(0, 0).plus(startPose), new Pose(-SIZE/2+24, 0).plus(startPose)).constant(0);
+        Path toFlower = line(startPose, Utils.fromPose2d(BiobuzzField.field().flowerSide())).constant(0);
         Path toIntake = line(new Pose(-SIZE/2+24, 0).plus(startPose), new Pose(-36, 0).plus(startPose)).constant(0);
         Path toGarden = line(new Pose(0, 0).plus(startPose), new Pose(48, 0).plus(startPose)).constant(0);
         Path toShoot = line(new Pose(48, 0).plus(startPose), new Pose(24, -4*24).plus(startPose)).constant(0);
@@ -57,17 +58,18 @@ public class OneTipRedAuto extends LinearOpMode
         long startedAt = System.currentTimeMillis();
 
         long t = System.currentTimeMillis();
-        robot.shooter.setManual(false);
+        //robot.shooter.setManual(false);
 
-        robot.shooter.reqAim(true);
+        //robot.shooter.reqAim(true);
 
-        shoot(test, false); // fire preloads
-        robot.intake.intake();
-        follow(toGarden);
-        robot.intake.feed();
-        follow(toShoot);
-        shoot(park, false);
-        follow(park);
+        //shoot(test, false); // fire preloads
+        //robot.intake.intake();
+        robot.intake.startPollenRetrieval();
+        follow(toFlower);
+        //robot.intake.feed();
+        //follow(toShoot);
+        //shoot(park, false);
+        //follow(park);
 
         Globals.AUTO_ENDING_POSE = Globals.ROBOT_POSITION.clone();
 
