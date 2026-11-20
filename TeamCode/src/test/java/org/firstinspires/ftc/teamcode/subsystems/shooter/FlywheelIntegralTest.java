@@ -51,4 +51,22 @@ public class FlywheelIntegralTest {
         p.update(0, 470, kS + kV * 470);
         assertEquals(470, p.velocity(), 0.01);
     }
+
+    @Test
+    public void agreeingEncodersAreAveraged() {
+        assertEquals(455, Flywheel.combine(450, 460), 1e-9);
+    }
+
+    @Test
+    public void deadEncoderDoesNotHalveTheSpeed() {
+        // Using the 0 would make the loop spin the wheel far past the target.
+        assertEquals(470, Flywheel.combine(0, 470), 1e-9);
+        assertEquals(470, Flywheel.combine(470, 0), 1e-9);
+    }
+
+    @Test
+    public void slippingBeltUsesTheSlowerEncoder() {
+        // The motor behind a slipping belt over-reads the wheel; the other one is right.
+        assertEquals(430, Flywheel.combine(500, 430), 1e-9);
+    }
 }

@@ -19,6 +19,13 @@ public class Flywheel {
     // The drive motors' encoder inputs are free because Pedro localizes with the Pinpoint.
     // Read once at init, so restart the OpMode after changing it.
     public static String ENCODER_PORT = "leftFront";
+    // shooter2's encoder. Both motors belt onto one shaft, so the two must agree; averaging them
+    // halves the noise. "" = only one encoder.
+    public static String ENCODER_2_PORT = "rightFront";
+    /** in/s. More than this between the encoders = a slipping belt or a dead encoder. */
+    public static double MAX_ENCODER_DISAGREEMENT = 30.0;
+    /** An encoder reading below this fraction of the other is treated as unplugged. */
+    public static double DEAD_ENCODER_FRACTION = 0.5;
 
     public static double TICKS_PER_MOTOR_REV = 28.0;
 
@@ -91,7 +98,7 @@ public class Flywheel {
 
     private final Robot robot;
     public final PriorityMotor flywheel;
-    private final DcMotorEx motorRaw, encoder;
+    private final DcMotorEx motorRaw, encoder, encoder2;
 
     private LQRController controller;
     private double builtWith_kV, builtWith_kA, builtWith_kS, builtWith_dt, builtWith_latency;
@@ -118,6 +125,7 @@ public class Flywheel {
             m.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         }
         encoder = ENCODER_PORT.isEmpty() ? motorRaw : robot.hardwareMap.get(DcMotorEx.class, ENCODER_PORT);
+        encoder2 = ENCODER_2_PORT.isEmpty() ? null : robot.hardwareMap.get(DcMotorEx.class, ENCODER_2_PORT);
         double dir = MOTOR_REVERSED ? -1 : 1;
 
         flywheel = new PriorityMotor(new DcMotorEx[]{motorRaw, motor2}, "flywheel", 3, 5,
@@ -196,6 +204,11 @@ public class Flywheel {
         TelemetryUtil.packet.put("Flywheel : Filtered Velocity", filteredVelocity);
         TelemetryUtil.packet.put("Flywheel : Raw Velocity", actualVelocity);
         TelemetryUtil.packet.put("Flywheel : Encoder Ticks", getRawPosition());
+        if (encoder2 != null) {
+            TelemetryUtil.packet.put("Flywheel : Encoder 1 Velocity", getEncoderVelocity(encoder));
+            TelemetryUtil.packet.put("Flywheel : Encoder 2 Velocity", getEncoderVelocity(encoder2));
+            TelemetryUtil.packet.put("Flywheel : ENCODERS DISAGREE", getEncoderMismatch() > MAX_ENCODER_DISAGREEMENT ? 1 : 0);
+        }
         TelemetryUtil.packet.put("Flywheel : Shots", totalShots);
         TelemetryUtil.packet.put("Flywheel : Error", rampedTarget - filteredVelocity);
         TelemetryUtil.packet.put("Flywheel : Feedforward (V)", controller.lastFeedforward());
@@ -259,8 +272,31 @@ public class Flywheel {
     public double getFilteredVelocity() { return filteredVelocity; }
 
     public double getRawVelocity() {
-        double motorRevsPerSec = encoder.getVelocity() / TICKS_PER_MOTOR_REV;
+        double v1 = getEncoderVelocity(encoder);
+        return encoder2 == null ? v1 : combine(v1, getEncoderVelocity(encoder2));
+    }
+
+    /** |encoder 1 - encoder 2| in in/s; 0 with a single encoder. */
+    public double getEncoderMismatch() {
+        return encoder2 == null ? 0 : Math.abs(getEncoderVelocity(encoder) - getEncoderVelocity(encoder2));
+    }
+
+    /** Wheel surface speed seen by one motor's encoder (abs: the motors are mounted opposed). */
+    private static double getEncoderVelocity(DcMotorEx e) {
+        double motorRevsPerSec = e.getVelocity() / TICKS_PER_MOTOR_REV;
         return Math.abs(motorRevsPerSec * WHEEL_REVS_PER_MOTOR_REV * Math.PI * WHEEL_DIAMETER);
+    }
+
+    /**
+     * Average when the encoders agree (half the noise). When they don't, one belt is slipping: the
+     * motor behind it spins faster than the wheel, so the slower encoder is the true wheel speed.
+     * Except a reading under DEAD_ENCODER_FRACTION of the other is an unplugged encoder, not slip:
+     * using it would drive the wheel far past the target, so use the other one.
+     */
+    static double combine(double v1, double v2) {
+        if (Math.abs(v1 - v2) <= MAX_ENCODER_DISAGREEMENT) return (v1 + v2) / 2;
+        double hi = Math.max(v1, v2), lo = Math.min(v1, v2);
+        return lo < DEAD_ENCODER_FRACTION * hi ? hi : lo;
     }
 
     /** Encoder ticks, for checking the encoder counts at all. */
