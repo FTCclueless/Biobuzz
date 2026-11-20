@@ -61,7 +61,7 @@ public class FlywheelTuner extends LinearOpMode {
         if (Math.abs(r.steadyError) > 5 && Math.abs(r.steadyError) > 3 * Math.max(1, r.overshoot)) {
             return new String[]{
                     String.format(Locale.US, "Sits %+.1f in/s off target.", r.steadyError),
-                    "  Feedforward error, not a gain problem: re-check kV/kS or FF_TABLE."};
+                    "  -> raise Flywheel.kI (it trims feedforward error), or re-check FF_TABLE."};
         }
         if (r.overshoot > 0.05 * r.to) {
             return new String[]{String.format(Locale.US, "Overshoots by %.0f in/s.", r.overshoot),

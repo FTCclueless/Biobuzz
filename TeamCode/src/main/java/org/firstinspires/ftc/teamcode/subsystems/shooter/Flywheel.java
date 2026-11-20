@@ -44,6 +44,15 @@ public class Flywheel {
 
     public static double MAX_EFFORT = 8.0;
 
+    // Integral trim, V per (in/s * s). The LQR gain alone is P-only and tops out near
+    // kV*e^(-dt/tau)/(1-e^(-dt/tau)) (~0.09 V per in/s here), so a 1 V feedforward error
+    // leaves a ~10 in/s offset whatever MAX_VELOCITY_ERROR is. This removes it.
+    public static double kI = 0.2;
+    /** Only integrate within this error (in/s), so spin-up and shot dips don't wind it up. */
+    public static double I_BAND = 20.0;
+    /** Most the integral may add or remove (V). */
+    public static double I_MAX = 3.0;
+
     public static double CONTROL_DT = 0.02;
 
     public static final FlywheelFeedforward FF_TABLE = new FlywheelFeedforward();
@@ -80,6 +89,7 @@ public class Flywheel {
     private double rampedTarget = 0.0;
     private double filteredVelocity = 0.0;
     private double lastReference = 0.0;
+    private double integral = 0.0;
     private int pendingShots = 0;
     private int totalShots = 0;
     private long lastShotTime = 0;
@@ -145,12 +155,14 @@ public class Flywheel {
         if (targetVelocity <= 1.0) {
             rampedTarget = 0;
             lastReference = 0;
+            integral = 0;
             controller.reset(0, filteredVelocity);
             power = 0;
         } else {
             controller.setVelocityGoal(rampedTarget);
             power = controller.calculateVelocity(filteredVelocity, robot.sensors.getVoltage(),
-                    feedforwardVolts(rampedTarget, dt));
+                    feedforwardVolts(rampedTarget, dt) + integral);
+            integral = integrate(integral, rampedTarget - filteredVelocity, dt, controller.isSaturated());
         }
         power = Math.max(0.0, Math.min(1.0, power));
         flywheel.setTargetPower(power);
@@ -166,6 +178,7 @@ public class Flywheel {
         TelemetryUtil.packet.put("Flywheel : Error", rampedTarget - filteredVelocity);
         TelemetryUtil.packet.put("Flywheel : Feedforward (V)", controller.lastFeedforward());
         TelemetryUtil.packet.put("Flywheel : Feedback (V)", controller.lastFeedback());
+        TelemetryUtil.packet.put("Flywheel : Integral (V)", integral);
         TelemetryUtil.packet.put("Flywheel : Saturated", controller.isSaturated() ? 1 : 0);
         TelemetryUtil.packet.put("Flywheel : FF source", usingTable() ? 1 : 0);
         LogUtil.flywheelTarget.set(targetVelocity);
@@ -178,8 +191,14 @@ public class Flywheel {
 
         refAccel = Math.max(-MAX_SPIN_UP_ACCEL, Math.min(MAX_SPIN_UP_ACCEL, refAccel));
 
-        if (!USE_FF_TABLE || FF_TABLE.isEmpty()) return Double.NaN;
-        return FF_TABLE.volts(reference) + kA * refAccel;
+        double steady = usingTable() ? FF_TABLE.volts(reference) : kS + kV * reference;
+        return steady + kA * refAccel;
+    }
+
+    static double integrate(double integral, double error, double dt, boolean saturated) {
+        // Anti-windup: hold the integral while the output is clipped or the error is large.
+        if (Math.abs(error) >= I_BAND || saturated) return integral;
+        return Math.max(-I_MAX, Math.min(I_MAX, integral + kI * error * dt));
     }
 
     public boolean usingTable() { return USE_FF_TABLE && !FF_TABLE.isEmpty(); }

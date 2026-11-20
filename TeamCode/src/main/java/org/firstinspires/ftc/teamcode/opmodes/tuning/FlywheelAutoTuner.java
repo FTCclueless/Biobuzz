@@ -20,11 +20,13 @@ public class FlywheelAutoTuner extends LinearOpMode {
 
     public static double LOW_VELOCITY = 370.0;
 
-    public static double START_ERROR = 30.0;
+    // Sweeps Flywheel.kI, gentle to aggressive. MAX_VELOCITY_ERROR is not swept: at this
+    // loop rate its LQR gain barely changes (it saturates near the one-step deadbeat gain).
+    public static double START_KI = 0.05;
 
-    public static double SWEEP_FACTOR = 0.7;
+    public static double SWEEP_FACTOR = 1.5;
 
-    public static double MIN_ERROR = 2.0;
+    public static double MAX_KI = 2.0;
 
     public static int STOP_AFTER_FAILURES = 2;
 
@@ -39,7 +41,7 @@ public class FlywheelAutoTuner extends LinearOpMode {
     public static double STEP_SECONDS = 2.5;
 
     private static final class Trial {
-        double error, gain;
+        double kI;
         FlywheelProcedures.Step step;
         boolean passed;
         String failure;
@@ -64,7 +66,7 @@ public class FlywheelAutoTuner extends LinearOpMode {
         if (isStopRequested()) return;
 
         double origKV = Flywheel.kV, origKA = Flywheel.kA, origKS = Flywheel.kS;
-        double origError = Flywheel.MAX_VELOCITY_ERROR;
+        double origKI = Flywheel.kI;
         boolean finished = false;
         try {
             FlywheelProcedures.Model model = proc.characterize(
@@ -85,24 +87,19 @@ public class FlywheelAutoTuner extends LinearOpMode {
 
             List<Boolean> passed = new ArrayList<>();
             List<Double> settle = new ArrayList<>();
-            double minGain = Double.MAX_VALUE, maxGain = 0;
             for (Trial t : trials) {
                 passed.add(t.passed);
                 settle.add(t.step.settleTime);
-                minGain = Math.min(minGain, t.gain);
-                maxGain = Math.max(maxGain, t.gain);
             }
             int chosen = SweepSelector.choose(passed, settle);
 
-            boolean knobInert = maxGain > 0 && (maxGain - minGain) / maxGain < 0.05;
-
             if (chosen < 0) {
-                Flywheel.MAX_VELOCITY_ERROR = origError;
+                Flywheel.kI = origKI;
                 finished = true;
                 showSweepFailure(proc, model, trials);
                 return;
             }
-            Flywheel.MAX_VELOCITY_ERROR = trials.get(chosen).error;
+            Flywheel.kI = trials.get(chosen).kI;
 
             proc.coast(1.0);
             FlywheelProcedures.Step v1 = proc.step("verify spin-up", 0, TARGET_VELOCITY,
@@ -112,13 +109,13 @@ public class FlywheelAutoTuner extends LinearOpMode {
             if (!opModeIsActive()) return;
             finished = true;
 
-            showResult(proc, model, trials, chosen, knobInert, v1, v2);
+            showResult(proc, model, trials, chosen, v1, v2);
         } finally {
             if (!finished) {
                 Flywheel.kV = origKV;
                 Flywheel.kA = origKA;
                 Flywheel.kS = origKS;
-                Flywheel.MAX_VELOCITY_ERROR = origError;
+                Flywheel.kI = origKI;
             }
         }
     }
@@ -126,14 +123,13 @@ public class FlywheelAutoTuner extends LinearOpMode {
     private List<Trial> sweep(FlywheelProcedures proc) {
         List<Trial> trials = new ArrayList<>();
         int failuresInRow = 0;
-        for (double e = START_ERROR; e >= MIN_ERROR - 1e-9 && opModeIsActive(); e *= SWEEP_FACTOR) {
-            Flywheel.MAX_VELOCITY_ERROR = e;
+        for (double k = START_KI; k <= MAX_KI + 1e-9 && opModeIsActive(); k *= SWEEP_FACTOR) {
+            Flywheel.kI = k;
             proc.holdClosedLoop(LOW_VELOCITY, PREP_SECONDS);
 
             Trial t = new Trial();
-            t.error = e;
-            t.gain = proc.fw.gain();
-            t.step = proc.step(String.format(Locale.US, "trial %d (err %.1f)", trials.size() + 1, e),
+            t.kI = k;
+            t.step = proc.step(String.format(Locale.US, "trial %d (kI %.3f)", trials.size() + 1, k),
                     LOW_VELOCITY, TARGET_VELOCITY, STEP_SECONDS, SETTLE_BAND);
             t.failure = judge(t.step);
             t.passed = t.failure == null;
@@ -160,25 +156,20 @@ public class FlywheelAutoTuner extends LinearOpMode {
     }
 
     private void showResult(FlywheelProcedures proc, FlywheelProcedures.Model model,
-                            List<Trial> trials, int chosen, boolean knobInert,
+                            List<Trial> trials, int chosen,
                             FlywheelProcedures.Step v1, FlywheelProcedures.Step v2) {
         Trial c = trials.get(chosen);
         while (opModeIsActive()) {
             proc.closedLoop(0);
             telemetry.addLine("=== DONE: applied live ===");
-            telemetry.addData("chosen MAX_VELOCITY_ERROR", "%.2f in/s  (gain %.4f V per in/s)",
-                    c.error, c.gain);
-            if (knobInert) {
-                telemetry.addLine("NOTE: gain changed <5% across the sweep. This wheel's response");
-                telemetry.addLine("  is set by saturation/filtering, not this knob. Check kA.");
-            }
+            telemetry.addData("chosen kI", "%.3f V per (in/s*s)", c.kI);
             telemetry.addLine(FlywheelProcedures.describe(v1));
             telemetry.addLine(FlywheelProcedures.describe(v2));
             telemetry.addLine();
             trialTable(trials, chosen);
             telemetry.addLine();
             for (String s : FlywheelProcedures.pasteLines(model)) telemetry.addLine(s);
-            telemetry.addLine(String.format(Locale.US, "MAX_VELOCITY_ERROR = %.2f;", c.error));
+            telemetry.addLine(String.format(Locale.US, "kI = %.3f;", c.kI));
             telemetry.update();
         }
     }
@@ -189,19 +180,19 @@ public class FlywheelAutoTuner extends LinearOpMode {
         while (opModeIsActive()) {
             proc.closedLoop(0);
             telemetry.addLine("=== NO SETTING PASSED ===");
-            telemetry.addLine("Model was applied; MAX_VELOCITY_ERROR left unchanged.");
+            telemetry.addLine("Model was applied; kI left unchanged.");
             telemetry.addData("most common failure", common);
             switch (common) {
                 case "offset":
-                    telemetry.addLine("  Feedforward is off. Check the FF_TABLE points cover");
-                    telemetry.addLine("  LOW..TARGET speeds, or raise MAX_STEADY_ERROR.");
+                    telemetry.addLine("  Integral too weak to remove the feedforward error in time:");
+                    telemetry.addLine("  raise MAX_KI or STEP_SECONDS, or re-characterize warm.");
                     break;
                 case "noisy":
                     telemetry.addLine("  Speed reading is noisy. Lower VELOCITY_FILTER_LOW, check");
                     telemetry.addLine("  the encoder mount, or raise MAX_NOISE if shots still land.");
                     break;
                 case "overshoot":
-                    telemetry.addLine("  Overshoots even when gentle: kA may be too small.");
+                    telemetry.addLine("  Overshoots even at the lowest kI: lower START_KI, or kA is too big.");
                     break;
                 default:
                     telemetry.addLine("  TARGET may be above free speed. Lower it or raise power.");
@@ -226,9 +217,9 @@ public class FlywheelAutoTuner extends LinearOpMode {
     private void trialTable(List<Trial> trials, int chosen) {
         for (int i = 0; i < trials.size(); i++) {
             Trial t = trials.get(i);
-            telemetry.addLine(String.format(Locale.US, "%s err %5.1f  settle %.2fs  over %3.0f  noise %.1f  %s",
-                    i == chosen ? ">" : " ", t.error, t.step.settleTime, t.step.overshoot,
-                    t.step.steadyNoise, t.passed ? "ok" : t.failure));
+            telemetry.addLine(String.format(Locale.US, "%s kI %.3f  settle %.2fs  over %3.0f  err %+.1f  noise %.1f  %s",
+                    i == chosen ? ">" : " ", t.kI, t.step.settleTime, t.step.overshoot,
+                    t.step.steadyError, t.step.steadyNoise, t.passed ? "ok" : t.failure));
         }
     }
 

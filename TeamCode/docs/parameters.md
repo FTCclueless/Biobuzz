@@ -32,7 +32,7 @@ Each step depends on the ones before it.
 | 2 | Drive limits | Pedro group "2": the five Identification tuners | top speeds, natural deceleration, brake coefficients |
 | 3 | Drive gains | Pedro group "3": Heading / Forward / Strafe auto tuners | `headingFeedback`, `forwardTranslational`, `strafeTranslational` |
 | 4 | Check paths | Pedro group "4": LineTest, StrafeLineTest, Curves | Nothing. It's a pass/fail check |
-| 5 | Flywheel | Flywheel Auto Tuner | `kV`, `kA`, `kS`, `FF_TABLE`, `MAX_VELOCITY_ERROR` |
+| 5 | Flywheel | Flywheel Auto Tuner | `kV`, `kA`, `kS`, `FF_TABLE`, `kI` |
 | 6 | Turret | Turret Calibrator | `ZERO_POSITION`, `POSITION_PER_RADIAN` |
 | 7 | Intake sensor | Intake Sensor Test (TeleOp) | `PRESENT_CM`, color hue ranges |
 | 8 | Shot table | (shoot and record) | `ShotTable2` entries |
@@ -112,7 +112,8 @@ way, fix the directions here.
 | `kS` | Volts to overcome friction | **AUTO** Flywheel Auto Tuner / Characterizer | 0.35 (placeholder) |
 | `FF_TABLE` | Measured volts at each speed. Replaces the straight-line kV/kS estimate, which drifts at high speed | **AUTO** (paste the `FF_TABLE.put` lines into the static block) | empty |
 | `USE_FF_TABLE` | Use the table when it has entries | **LEAVE** | true |
-| `MAX_VELOCITY_ERROR` | Speed error, in/s, worth spending `MAX_EFFORT` volts to fix. Smaller = stiffer | **AUTO** Flywheel Auto Tuner | 8.0 |
+| `MAX_VELOCITY_ERROR` | Speed error, in/s, worth spending `MAX_EFFORT` volts to fix. Barely changes the gain at a 20 ms loop | Leave | 14.7 |
+| `kI` | Integral trim, V per (in/s·s): removes steady offset from feedforward error. Too high = overshoot | **AUTO** Flywheel Auto Tuner | 0.2 |
 | `MAX_EFFORT` | Volts the feedback is allowed to use | **LEAVE** | 8.0 |
 | `CONTROL_DT` | Loop period the controller is designed for, s | **LEAVE** (match your loop time) | 0.02 |
 

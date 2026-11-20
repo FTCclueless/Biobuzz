@@ -144,8 +144,8 @@ heading when TeleOp locks onto the goal. Tune them by hand.
 run (about 2 minutes), with no pasting in between:
 
 1. **Characterize** — measures `kV`/`kA`/`kS` and `FF_TABLE`, and applies them live.
-2. **Sweep** — retries the closed loop at progressively stiffer `MAX_VELOCITY_ERROR`, scoring
-   each trial.
+2. **Sweep** — retries the closed loop at progressively larger integral gain `kI`, scoring
+   each trial. (`MAX_VELOCITY_ERROR` is not swept: at a 20 ms loop its LQR gain barely changes.)
 3. **Choose** — the fastest trial that passed. If the next stiffer trial failed, the winner is
    at the edge of stability, so it backs off one step to keep a margin.
 4. **Verify** — re-runs the test on the chosen setting.
@@ -186,9 +186,9 @@ Step-tests the closed loop and reports settle time, overshoot and steady-state e
 
 | Symptom | Fix |
 |---|---|
-| Sits off target and stays there | Feedforward. Re-check `kV` and `kS`. |
-| Overshoots | Raise `MAX_VELOCITY_ERROR`, or lower `MAX_EFFORT` |
-| Slow to recover | Lower `MAX_VELOCITY_ERROR` until it starts to overshoot, then back off |
+| Sits off target and stays there | Feedforward error the integral hasn't removed: raise `kI`, or re-characterize |
+| Overshoots or oscillates | Lower `kI` |
+| Slow to recover after a shot | Raise `kI` until it starts to overshoot, then back off |
 
 ### Step 7 — Turret Calibrator (Autonomous, group "test")
 
