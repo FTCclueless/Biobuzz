@@ -30,6 +30,9 @@ public class Sensors {
 
     private double voltage;
     public static long voltageUpdateTime = 500;
+    /** Readings below this are a hub brownout, not the battery; using them would wreck voltage compensation. */
+    public static double MIN_VALID_VOLTAGE = 6.0;
+    public int badVoltageReads = 0;
     private long lastVoltageUpdatedTime = 0;
     private final VoltageSensor voltageSensor;
 
@@ -39,6 +42,7 @@ public class Sensors {
         currentTime = System.nanoTime();
         voltageSensor = robot.hardwareMap.voltageSensor.iterator().next();
         voltage = voltageSensor.getVoltage();
+        if (voltage < MIN_VALID_VOLTAGE) voltage = 12.0;
 
         allHubs = robot.hardwareMap.getAll(LynxModule.class);
 
@@ -61,11 +65,13 @@ public class Sensors {
         //intakeCurrent = robot.intake.roller.getCurrent();
 
         if (currentTime - lastVoltageUpdatedTime > voltageUpdateTime * 1e6) {
-            voltage = voltageSensor.getVoltage();
+            double v = voltageSensor.getVoltage();
+            if (v >= MIN_VALID_VOLTAGE) voltage = v; else badVoltageReads++;
             lastVoltageUpdatedTime = currentTime;
         }
 
         TelemetryUtil.packet.put("Sensors: Voltage", voltage);
+        TelemetryUtil.packet.put("Sensors: bad voltage reads (brownouts)", badVoltageReads);
         //TelemetryUtil.packet.put("Shooter : Hood launch angle (deg)", Math.toDegrees(robot.shooter.hood.getCurrentAngle() / Shooter.hoodGearRatio + Shooter.hoodSweep));
         //TelemetryUtil.packet.put("Intake : current (AMPS)", intakeCurrent);
 

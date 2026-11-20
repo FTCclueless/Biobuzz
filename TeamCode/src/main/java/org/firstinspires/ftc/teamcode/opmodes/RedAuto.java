@@ -16,6 +16,7 @@ import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 import org.firstinspires.ftc.teamcode.utils.RunMode;
+import org.firstinspires.ftc.teamcode.vision.ClusterChaser;
 
 @Config
 @Autonomous(name = "Red Auto", group = "Auto")
@@ -25,6 +26,11 @@ public class RedAuto extends LinearOpMode {
 
     public static long shootDuration = 1000;
 
+    /** After the preloads tip the hive, sweep the balls it spills (Limelight). */
+    public static boolean CHASE_CLUSTERS = true;
+    public static int CHASE_MAX_CLUSTERS = 2;
+    public static long CHASE_BUDGET_MS = 8000;
+
     private Robot robot;
 
     @Override
@@ -32,7 +38,7 @@ public class RedAuto extends LinearOpMode {
         Globals.RUNMODE = RunMode.AUTO;
         BiobuzzField.setSide(BiobuzzField.Side.RED);
 
-        robot = new Robot(hardwareMap);
+        robot = new Robot(hardwareMap, true);
         robot.setStopChecker(this::isStopRequested);
         Pose2d startBase = BiobuzzField.field().start();
         robot.drivetrain.setPoseEstimate(startBase);
@@ -42,12 +48,11 @@ public class RedAuto extends LinearOpMode {
         robot.shooter.setShooterBlocker(true);
 
         Path test = line(new Pose(0, 0).plus(startPose), new Pose(SIZE, 0).plus(startPose)).constant(0);
-        Path toFlower = line(new Pose(0, 0).plus(startPose), new Pose(-SIZE/2+24, 0).plus(startPose)).constant(0);
         Path toIntake = line(new Pose(-SIZE/2+24, 0).plus(startPose), new Pose(-36, 0).plus(startPose)).constant(0);
         Path toGarden = line(new Pose(-36, 0).plus(startPose), new Pose(48, 0).plus(startPose)).constant(0);
         Path park = line(new Pose(48, 0).plus(startPose), new Pose(48, -4*24).plus(startPose)).constant(0);
 
-        telemetry.addLine("Blue Auto");
+        telemetry.addLine("Red Auto");
         telemetry.update();
         while (opModeInInit()) robot.update();
         if (isStopRequested()) return;
@@ -61,14 +66,18 @@ public class RedAuto extends LinearOpMode {
         robot.shooter.reqAim(true);
 
         shoot(test, false); // fire preloads
+        if (CHASE_CLUSTERS) new ClusterChaser(robot).run(CHASE_MAX_CLUSTERS, CHASE_BUDGET_MS);
         robot.intake.startPollenRetrieval();
-        follow(toFlower);
+        // From wherever the chase left us, not from the start pose.
+        Pose2d here = Globals.ROBOT_POSITION;
+        follow(line(new Pose(here.x, here.y), new Pose(-SIZE/2+24, 0).plus(startPose)).constant(0));
         robot.intake.intake();
         follow(toIntake);
         follow(toGarden);
         robot.intake.feed();
         shoot(park, true);
 
+        robot.balls.stop();
         Globals.AUTO_ENDING_POSE = Globals.ROBOT_POSITION.clone();
 
         telemetry.addData("done in (s)", "%.1f", (System.currentTimeMillis() - startedAt) / 1000.0);

@@ -78,6 +78,8 @@ public class Flywheel {
     // speed is what the FF_TABLE says holds that speed. Capping the excess caps the current,
     // so the wheel still gets full power once it is near speed. Raise for faster spin-up.
     public static double MAX_VOLTS_ABOVE_BACK_EMF = 6.0;
+    /** The current limit applies only below this fraction of the target speed. */
+    public static double CURRENT_LIMIT_BELOW = 0.6;
 
     public static double SPIN_UP_THRESH = 150.0;
 
@@ -176,8 +178,10 @@ public class Flywheel {
         } else {
             controller.setVelocityGoal(rampedTarget);
             // Inside the controller, so the latency predictor and anti-windup see the capped volts.
-            controller.outputLimits(0.0, Math.min(12.0,
-                    steadyVolts(actualVelocity) + MAX_VOLTS_ABOVE_BACK_EMF));
+            // Only during spin-up: near speed the current is small anyway, and a wrong FF_TABLE
+            // must never be able to cap the wheel below its target.
+            controller.outputLimits(0.0, filteredVelocity < CURRENT_LIMIT_BELOW * targetVelocity
+                    ? Math.min(12.0, steadyVolts(actualVelocity) + MAX_VOLTS_ABOVE_BACK_EMF) : 12.0);
             power = controller.calculateVelocity(filteredVelocity, robot.sensors.getVoltage(),
                     feedforwardVolts(rampedTarget, dt) + integral);
             integral = integrate(integral, rampedTarget - filteredVelocity, dt, controller.isSaturated());

@@ -238,7 +238,7 @@ public class FlywheelAutoTuner extends LinearOpMode {
                 telemetry.addLine();
                 telemetry.addLine("Some stage found nothing that passed. Most likely:");
                 telemetry.addLine("  never settled -> TARGET near free speed: lower TARGET_VELOCITY");
-                telemetry.addLine("  overshoot     -> something drags/varies: re-check the wheel spins free");
+                telemetry.addLine("  overshoot     -> add gentler MAX_ERRORS (e.g. 400) or lower KIS");
                 telemetry.addLine("  noisy         -> encoder: check cable/mount, or raise MAX_NOISE");
                 telemetry.addLine("  offset        -> raise the larger KIS values or STEP_SECONDS");
             }

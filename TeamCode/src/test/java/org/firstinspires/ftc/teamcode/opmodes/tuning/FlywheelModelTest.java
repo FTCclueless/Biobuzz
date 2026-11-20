@@ -38,4 +38,14 @@ public class FlywheelModelTest {
     public void healthyWheelPasses() {
         assertNull(model(240, 330, 420, 500, 580).problem());
     }
+
+    @Test
+    public void pointOffTheLineIsRejected() {
+        FlywheelProcedures.Model m = model(240, 330, 420, 500, 580);
+        m.points.get(2).volts += 1.5; // one unsteady step (e.g. a brownout mid-hold)
+        double[] fit = FlywheelProcedures.fitLine(m.points);
+        m.kV = fit[0];
+        m.kS = fit[1];
+        assertNotNull(m.problem());
+    }
 }

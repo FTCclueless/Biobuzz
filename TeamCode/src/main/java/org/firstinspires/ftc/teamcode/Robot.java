@@ -18,6 +18,7 @@ import org.firstinspires.ftc.teamcode.utils.LogUtil;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
 import org.firstinspires.ftc.teamcode.utils.priority.HardwareQueue;
 import org.firstinspires.ftc.teamcode.subsystems.drive.Drivetrain;
+import org.firstinspires.ftc.teamcode.vision.BallDetection;
 
 import java.util.ArrayList;
 import java.util.function.BooleanSupplier;
@@ -32,6 +33,8 @@ public class Robot {
     public Intake intake;
     public Shooter shooter;
     public Flower flower;
+    /** Limelight ball tracking, or null when built without vision. */
+    public BallDetection balls;
 
     private BooleanSupplier stopChecker = null;
     public ArrayList<Consumer<Canvas>> canvasDrawTasks = new ArrayList<>();
@@ -52,6 +55,10 @@ public class Robot {
         intake = new Intake(this);
         shooter = new Shooter(this);
        // flower = new Flower(this);
+        if (useVision) {
+            balls = new BallDetection(hardwareMap);
+            balls.start();
+        }
     }
 
     public void update() {
@@ -62,6 +69,8 @@ public class Robot {
         sensors.update();
 
         drivetrain.update();
+        // Right after the pose update, every loop: balls are already tracked when the auto wants them.
+        if (balls != null) balls.update();
         intake.update();
         shooter.update();
         //flower.update();

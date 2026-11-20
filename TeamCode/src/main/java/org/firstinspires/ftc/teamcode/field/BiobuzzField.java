@@ -61,6 +61,7 @@ public abstract class BiobuzzField
     public static void setSide(Side sideOfTheField)
     {
         side = sideOfTheField;
+        Globals.isRed = sideOfTheField == Side.RED; // vision and aiming read this, keep them in sync
         currentField = sideOfTheField == Side.RED ? new RedField() : new BlueField();
     }
 

@@ -34,17 +34,25 @@ final class FlywheelProcedures {
     /** Open-loop steps ramp power at this rate (power per second) to limit the current spike. */
     static final double OPEN_LOOP_RAMP = 1.0;
 
+    /** Every point must sit within this of the fitted kS + kV * speed line (V). */
+    static final double MAX_LINE_ERROR_VOLTS = 0.6;
+
     /** The highest power step must reach at least this (in/s). */
     static final double MIN_TOP_SPEED = 100;
 
     static final class Model {
         double kV = Double.NaN, kS = Double.NaN, kA = Double.NaN, tau = Double.NaN;
+        int brownouts;
         final List<Point> points = new ArrayList<>();
 
         String problem() {
             // A stalled wheel or an unplugged encoder gives near-zero speeds that can still fit a
             // positive kV by chance, and the table then extrapolates to absurd voltages.
-            if (points.size() < 2) return "fewer than 2 power steps finished";
+            if (points.size() < 2) {
+                return brownouts > 0
+                        ? brownouts + " steps lost to hub brownouts (voltage read < 6 V). Fix power wiring/battery."
+                        : "fewer than 2 power steps finished";
+            }
             for (int i = 1; i < points.size(); i++) {
                 if (points.get(i).velocity < points.get(i - 1).velocity + MIN_SPEED_RISE) {
                     return String.format(Locale.US,
@@ -59,6 +67,16 @@ final class FlywheelProcedures {
                         + "Check motor directions and the encoder cable.", top);
             }
             if (!(kV > 0)) return "kV invalid: need at least 2 steady points with rising speed";
+            // A DC motor's steady volts are a straight line in speed. Points off the line mean a
+            // step was not steady (brownout, slipping belt, bad encoder reads), so the fit is junk.
+            for (Point p : points) {
+                double off = p.volts - (kS + kV * p.velocity);
+                if (Math.abs(off) > MAX_LINE_ERROR_VOLTS) {
+                    return String.format(Locale.US, "point %.0f in/s @ %.2f V is %.2f V off the kV/kS line. "
+                            + "A step was not steady: check for brownouts and the encoder cable.",
+                            p.velocity, p.volts, off);
+                }
+            }
             if (Double.isNaN(tau)) return "tau invalid: the wheel never settled -- raise HOLD_SECONDS";
             if (kS < 0) return "kS negative: low power levels never reached steady state";
             return null;
@@ -82,8 +100,17 @@ final class FlywheelProcedures {
         for (int i = 0; i < steps && op.opModeIsActive(); i++) {
             double p = steps == 1 ? powerHigh
                     : powerLow + (powerHigh - powerLow) * i / (steps - 1.0);
-            coast(restSeconds);
-            Point pt = holdOpenLoop(p, holdSeconds, steadyFraction);
+            // A brownout mid-step cuts the motors, so that step's speed is meaningless: redo it once.
+            Point pt = null;
+            for (int attempt = 0; attempt < 2 && pt == null && op.opModeIsActive(); attempt++) {
+                coast(restSeconds);
+                int bad = robot.sensors.badVoltageReads;
+                pt = holdOpenLoop(p, holdSeconds, steadyFraction);
+                if (robot.sensors.badVoltageReads != bad) {
+                    m.brownouts++;
+                    pt = null;
+                }
+            }
             if (pt != null) m.points.add(pt);
         }
         coast(restSeconds);
@@ -153,6 +180,7 @@ final class FlywheelProcedures {
 
     static List<String> pasteLines(Model m) {
         List<String> out = new ArrayList<>();
+        if (m.brownouts > 0) out.add("WARNING: " + m.brownouts + " step(s) redone after hub brownouts. Check power wiring.");
         out.add("=== paste into Flywheel ===");
         out.add(String.format(Locale.US, "kV = %.6f;", m.kV));
         out.add(String.format(Locale.US, "kA = %.6f;", m.kA));

@@ -23,9 +23,10 @@ import java.util.Locale;
  * Limelight 3A neural detector -> field positions of POLLEN / NECTAR -> best cluster to drive to.
  *
  * Limelight setup (web UI at http://172.29.0.1:5801):
- *  - Pipeline type: Neural Detector, in slot PIPELINE. Upload the .tflite + labels.
+ *  - Pipeline type: Neural Detector, in slot PIPELINE. Upload TeamCode/limelight/replitedet-s0p5/
+ *    (.tflite + labels.txt); full steps in that folder's README.
  *  - Labels must contain "pollen" / "yellow", "red", or "blue" (case-insensitive). See classify().
- *  - Low exposure (motion blur kills detections while driving), confidence ~0.3.
+ *  - Low exposure (motion blur kills detections while driving), confidence 0.45.
  *
  * Every value here is live-tunable from Dashboard -> BallDetection.
  */
@@ -46,7 +47,7 @@ public class BallDetection {
     public static double NECTAR_RADIUS = 1.8;    // §9.8: 3.6 in diameter
     public static double MAX_RANGE = 90.0;       // in. Beyond this the ty->distance math is noise
 
-    public static double MIN_CONFIDENCE = 0.3;
+    public static double MIN_CONFIDENCE = 0.45; // RepLiteDet-S0.5's best-F1 threshold
     public static double MAX_STALENESS_MS = 100;
     public static boolean LATENCY_COMPENSATION = true;
 
