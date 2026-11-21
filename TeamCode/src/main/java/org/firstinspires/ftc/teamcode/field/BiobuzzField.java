@@ -24,15 +24,15 @@ public abstract class BiobuzzField
     public static Pose2d RED_PIVOT = new Pose2d(0, -HIVE_PIVOT_Y); // in
     public static Pose2d BLUE_PIVOT = new Pose2d(0, HIVE_PIVOT_Y); // in
     public static Pose2d RED_FLOWER_ALLY_STATION = new Pose2d(4*24-72, 0-72); // in
-    public static Pose2d RED_FLOWER_SIDE = new Pose2d(24, -72+Globals.ROBOT_FORWARD_LENGTH/2); // in
+    public static Pose2d RED_FLOWER_SIDE = new Pose2d(12, -72+Globals.ROBOT_FORWARD_LENGTH/2); // in
     public static Pose2d BLUE_FLOWER_ALLY_STATION = new Pose2d(2*24-72, 6*24-72); // in
-    public static Pose2d BLUE_FLOWER_SIDE = new Pose2d(24, 72-Globals.ROBOT_FORWARD_LENGTH/2); // in
+    public static Pose2d BLUE_FLOWER_SIDE = new Pose2d(-12, 72-Globals.ROBOT_FORWARD_LENGTH/2); // in
     public static Pose2d RED_GARDEN = new Pose2d(-3*24, -72+Globals.ROBOT_FORWARD_LENGTH/2);
     public static Pose2d BLUE_GARDEN = new Pose2d(3*24, 72-Globals.ROBOT_FORWARD_LENGTH/2);
     public static Pose RED_SHOOT = new Pose(-24, 48);
     public static Pose BLUE_SHOOT = new Pose(24, -48);
-    public static Pose RED_PARK = new Pose(36, -72);
-    public static Pose BLUE_PARK = new Pose(-36, 72);
+    public static Pose RED_PARK = new Pose(36, -60);
+    public static Pose BLUE_PARK = new Pose(-36, 60);
 
 
     public static Pose2d RED_START = new Pose2d(0, -72+Globals.ROBOT_FORWARD_LENGTH/2);
