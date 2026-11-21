@@ -87,9 +87,6 @@ public class Intake {
     public static double RED_HUE_BELOW = 20, RED_HUE_ABOVE = 335;
     public static double MIN_SATURATION = 0.35;
 
-    public static long TIME_UP = 1100;
-    public static long TIME_DOWN = 1000;
-
     private static int carriedCount = -1;
 
     private final Robot robot;
@@ -112,7 +109,6 @@ public class Intake {
 
     private double flowerAngle = 0;
     private double lastFlowerRaw = 0;
-    private long lastTimeFlower = -1;
 
     public Intake(Robot robot) {
         this.robot = robot;
@@ -189,7 +185,7 @@ public class Intake {
             case POLLEN_RETRIEVAL_START:
                 intakeMotor.setTargetPower(0);
                 pivotDown(false);
-                if (driveFlowerTo(flowerMechDownPosition, false)) state = State.POLLEN_RETRIEVAL_INTAKE;
+                if (driveFlowerTo(flowerMechDownPosition)) state = State.POLLEN_RETRIEVAL_INTAKE;
                 break;
             case POLLEN_RETRIEVAL_INTAKE:
                 flowerMechanismServo.setTargetPower(0);
@@ -198,7 +194,7 @@ public class Intake {
             case POLLEN_RETRIEVAL_END:
                 intakeMotor.setTargetPower(0);
                 pivotDown(false);
-                if (driveFlowerTo(flowerMechUpPosition, true)) state = State.IDLE;
+                if (driveFlowerTo(flowerMechUpPosition)) state = State.IDLE;
                 break;
             case TEST:
                 lastDirection = (int) Math.signum(intakeMotor.getPower());
@@ -300,15 +296,10 @@ public class Intake {
         lastFlowerRaw = raw;
     }
 
-    private boolean driveFlowerTo(double target, boolean up) {
-        if(lastTimeFlower == -1) {
-            lastTimeFlower = System.currentTimeMillis();
-        }
+    private boolean driveFlowerTo(double target) {
         double err = target - flowerAngle;
-        long timeThreshold = up ? TIME_UP : TIME_DOWN;
-        if (System.currentTimeMillis()-lastTimeFlower >= timeThreshold) {
+        if (Math.abs(err) < flowerMechPositionThreshold) {
             flowerMechanismServo.setTargetPower(0);
-            lastTimeFlower = -1;
             return true;
         }
         flowerMechanismServo.setTargetPower(flowerMechPID.update(err, -1.0, 1.0));
