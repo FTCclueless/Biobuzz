@@ -45,6 +45,15 @@ public class FlywheelIntegralTest {
     }
 
     @Test
+    public void integralHoldsFarBelowTargetButNotFarAbove() {
+        // Below: spin-up and shot dips, must not wind up. Above with the output unclipped: the
+        // feedforward is too high, and freezing here left the robot ~100 in/s fast.
+        assertEquals(0.0, Flywheel.integrate(0, 100, 0.02, false), 0);
+        assertTrue(Flywheel.integrate(0, -100, 0.02, false) < 0);
+        assertEquals(0.0, Flywheel.integrate(0, -100, 0.02, true), 0);
+    }
+
+    @Test
     public void predictorHoldsSteadySpeedWhenVoltageJustCoversFriction() {
         // At steady state the wheel neither speeds up nor slows down, so the prediction must match.
         StatePredictor p = StatePredictor.create(MechanismModel.flywheel(kV, kA, kS), 0.04);
@@ -54,7 +63,30 @@ public class FlywheelIntegralTest {
 
     @Test
     public void currentLimitHoldsAtStandstill() {
-        assertEquals(Flywheel.MAX_MOTOR_AMPS, Flywheel.motorAmps(Flywheel.maxVolts(0), 0), 1e-9);
+        // At 0 speed the motor draws the friction current plus MAX_MOTOR_AMPS of accelerating current.
+        double frictionAmps = Flywheel.FF_TABLE.volts(0) / Flywheel.MOTOR_RESISTANCE;
+        assertEquals(Flywheel.MAX_MOTOR_AMPS + frictionAmps,
+                Flywheel.motorAmps(Flywheel.maxVolts(0), 0), 1e-9);
+    }
+
+    @Test
+    public void currentLimitNeverBlocksHoldingSpeedEvenWithHighFriction() {
+        // A re-characterized wheel with stiff belts: 6 V just to turn. The old back-EMF cap
+        // (back-EMF + 5.2 V) sat below the hold volts here and left the wheel slow.
+        java.util.Map<Double, Double> saved = new java.util.TreeMap<>();
+        for (double v = 0; v <= 600; v += 1) saved.put(v, Flywheel.FF_TABLE.volts(v));
+        double[][] old = {{166.2, 4.736}, {259.7, 6.709}, {362.8, 8.629}, {463.6, 10.509}, {554.2, 12.361}};
+        try {
+            Flywheel.FF_TABLE.clear();
+            Flywheel.FF_TABLE.put(100, 6.0 + 0.0196 * 100).put(500, 6.0 + 0.0196 * 500);
+            for (double v = 0; v <= 300; v += 25) {
+                assertTrue("at " + v, Flywheel.maxVolts(v) >= Math.min(12.0, Flywheel.FF_TABLE.volts(v)) + 1.0
+                        || Flywheel.maxVolts(v) == 12.0);
+            }
+        } finally {
+            Flywheel.FF_TABLE.clear();
+            for (double[] p : old) Flywheel.FF_TABLE.put(p[0], p[1]);
+        }
     }
 
     @Test

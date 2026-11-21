@@ -26,6 +26,12 @@ import java.util.function.DoubleConsumer;
 public class FlywheelAutoTuner extends LinearOpMode {
     public static double TARGET_VELOCITY = 470.0; // keep ~1 V below battery: the FF_TABLE needs ~11.9 V at 530
     public static double LOW_VELOCITY = 370.0;
+    /** Tune at no more than this share of the speed measured at POWER_HIGH, so feedback has headroom. */
+    public static double REACH_FRACTION = 0.85;
+
+    // TARGET/LOW after the reach check; a target the wheel can't hold fails every trial at ~+100.
+    private double target, low;
+    private String reachNote = "";
 
     public static double[] LATENCIES = {0.0, 0.02, 0.04, 0.06, 0.08};
     // Gentle to stiff. Below ~30 the gain stops rising (one-step deadbeat limit), so stiffer is pointless.
@@ -98,6 +104,15 @@ public class FlywheelAutoTuner extends LinearOpMode {
             }
             FlywheelProcedures.apply(model);
 
+            double top = model.points.get(model.points.size() - 1).velocity;
+            target = Math.min(TARGET_VELOCITY, REACH_FRACTION * top);
+            low = target * LOW_VELOCITY / TARGET_VELOCITY;
+            reachNote = target < TARGET_VELOCITY
+                    ? String.format(Locale.US, "TARGET lowered %.0f -> %.0f in/s: the wheel only reached %.0f in/s"
+                    + " at power %.2f. If it used to reach ~550, check belts and both motor directions.",
+                    TARGET_VELOCITY, target, top, FlywheelCharacterizer.POWER_HIGH)
+                    : "";
+
             Stage latency = new Stage("LATENCY", Flywheel.LATENCY);
             run(proc, latency, LATENCIES, v -> Flywheel.LATENCY = v, false);
             if (!opModeIsActive()) return;
@@ -117,9 +132,9 @@ public class FlywheelAutoTuner extends LinearOpMode {
             Flywheel.kI = integral.result();
 
             proc.coast(1.0);
-            FlywheelProcedures.Step v1 = proc.step("verify spin-up", 0, TARGET_VELOCITY,
+            FlywheelProcedures.Step v1 = proc.step("verify spin-up", 0, target,
                     STEP_SECONDS + 1.0, SETTLE_BAND);
-            FlywheelProcedures.Step v2 = proc.step("verify step down", TARGET_VELOCITY, LOW_VELOCITY,
+            FlywheelProcedures.Step v2 = proc.step("verify step down", target, low,
                     STEP_SECONDS, SETTLE_BAND);
             if (!opModeIsActive()) return;
             finished = true;
@@ -156,9 +171,9 @@ public class FlywheelAutoTuner extends LinearOpMode {
     private Trial trial(FlywheelProcedures proc, String name) {
         Trial t = new Trial();
         for (int r = 0; r < Math.max(1, REPEATS) && opModeIsActive(); r++) {
-            proc.holdClosedLoop(LOW_VELOCITY, PREP_SECONDS);
+            proc.holdClosedLoop(low, PREP_SECONDS);
             FlywheelProcedures.Step s = proc.step(name + " #" + (r + 1),
-                    LOW_VELOCITY, TARGET_VELOCITY, STEP_SECONDS, SETTLE_BAND);
+                    low, target, STEP_SECONDS, SETTLE_BAND);
             String f = judge(s);
             // Keep the worst run: any failure beats a pass, then the less calm of the two.
             if (t.step == null || (f != null && t.failure == null)
@@ -201,6 +216,8 @@ public class FlywheelAutoTuner extends LinearOpMode {
     }
 
     private static String judge(FlywheelProcedures.Step s) {
+        // First: at full output no gain can help, so blaming overshoot/offset would mislead.
+        if (s.saturatedFraction > 0.5) return "maxed out";
         if (Double.isNaN(s.settleTime)) return "never settled";
         if (s.overshoot > MAX_OVERSHOOT_FRACTION * s.to) return "overshoot";
         if (s.steadyNoise > MAX_NOISE) return "noisy";
@@ -213,6 +230,8 @@ public class FlywheelAutoTuner extends LinearOpMode {
         while (opModeIsActive()) {
             proc.closedLoop(0);
             telemetry.addLine("=== DONE: applied live ===");
+            telemetry.addData("tuned at", "%.0f -> %.0f in/s", low, target);
+            if (!reachNote.isEmpty()) telemetry.addLine(reachNote);
             telemetry.addLine(FlywheelProcedures.describe(v1));
             telemetry.addLine(FlywheelProcedures.describe(v2));
             for (Stage st : stages) {
@@ -224,9 +243,10 @@ public class FlywheelAutoTuner extends LinearOpMode {
                 for (int i = 0; i < st.trials.size(); i++) {
                     Trial t = st.trials.get(i);
                     telemetry.addLine(String.format(Locale.US,
-                            "%s %7.3f  settle %.2fs  over %3.0f  err %+.1f  noise %.1f  %s",
+                            "%s %7.3f  settle %.2fs  over %3.0f  err %+.1f  noise %.1f  maxed %.0f%%  %s",
                             i == st.chosen ? ">" : " ", t.value, t.step.settleTime, t.step.overshoot,
-                            t.step.steadyError, t.step.steadyNoise, t.passed ? "ok" : t.failure));
+                            t.step.steadyError, t.step.steadyNoise, 100 * t.step.saturatedFraction,
+                            t.passed ? "ok" : t.failure));
                 }
             }
             telemetry.addLine();
@@ -236,7 +256,9 @@ public class FlywheelAutoTuner extends LinearOpMode {
             telemetry.addLine(String.format(Locale.US, "kI = %.3f;", stages[2].result()));
             if (stages[1].chosen < 0 || stages[2].chosen < 0) {
                 telemetry.addLine();
-                telemetry.addLine("Some stage found nothing that passed. Most likely:");
+                telemetry.addLine("Some stage found nothing that passed. Most likely (err + = slower than target):");
+                telemetry.addLine("  maxed out     -> full power can't hold the target: lower REACH_FRACTION,"
+                        + " or the wheel is weak (belts, a motor reversed or unplugged)");
                 telemetry.addLine("  never settled -> TARGET near free speed: lower TARGET_VELOCITY");
                 telemetry.addLine("  overshoot     -> add gentler MAX_ERRORS (e.g. 400) or lower KIS");
                 telemetry.addLine("  noisy         -> encoder: check cable/mount, or raise MAX_NOISE");
@@ -256,7 +278,7 @@ public class FlywheelAutoTuner extends LinearOpMode {
     }
 
     private static String mostCommonFailure(List<Trial> trials) {
-        String[] kinds = {"never settled", "overshoot", "noisy", "offset"};
+        String[] kinds = {"maxed out", "never settled", "overshoot", "noisy", "offset"};
         String best = "never settled";
         int bestN = -1;
         for (String k : kinds) {
