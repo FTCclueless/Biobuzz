@@ -51,4 +51,19 @@ public class FlywheelIntegralTest {
         p.update(0, 470, kS + kV * 470);
         assertEquals(470, p.velocity(), 0.01);
     }
+
+    @Test
+    public void currentLimitHoldsAtStandstill() {
+        assertEquals(Flywheel.MAX_MOTOR_AMPS, Flywheel.motorAmps(Flywheel.maxVolts(0), 0), 1e-9);
+    }
+
+    @Test
+    public void currentLimitNeverBlocksHoldingSpeed() {
+        // The volts that hold a speed must fit under the cap at that speed, or the wheel would
+        // settle below its target (the old spin-up-only limit existed to avoid exactly that).
+        for (double v = 0; v <= 550; v += 25) {
+            assertTrue("at " + v, Flywheel.maxVolts(v) >= Math.min(12.0, Flywheel.FF_TABLE.volts(v)) + 1.0
+                    || Flywheel.maxVolts(v) == 12.0);
+        }
+    }
 }

@@ -78,7 +78,7 @@ public class PriorityMotor extends PriorityDevice {
             lastZeroTime = System.currentTimeMillis();
 
         for (int i = 0; i < motor.length; i ++) {
-            motor[i].setPower(power * multipier[i]);
+            AsyncWriter.setPower(motor[i], power * multipier[i]);
         }
         lastUpdateTime = System.nanoTime();
         lastPower = power;
@@ -122,7 +122,7 @@ public class PriorityMotor extends PriorityDevice {
     @Override
     protected void update() {
         for (int i = 0; i < motor.length; i ++) {
-            motor[i].setPower(power * multipier[i]);
+            AsyncWriter.setPower(motor[i], power * multipier[i]);
         }
         if (power == 0){
             lastZeroTime = System.currentTimeMillis();

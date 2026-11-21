@@ -81,7 +81,7 @@ public class PriorityCRServo extends PriorityDevice {
     @Override
     public void update() {
         for(int i = 0; i < servo.length; i++){
-            servo[i].setPower(Utils.minMaxClip(power, -1.0, 1.0) * (reversed[i] ? -1.0 : 1.0));
+            AsyncWriter.setPower(servo[i], Utils.minMaxClip(power, -1.0, 1.0) * (reversed[i] ? -1.0 : 1.0));
         }
         lastUpdateTime = System.nanoTime();
         lastPower = power;

@@ -13,6 +13,8 @@ public class Globals {
     public static boolean isRed = true;
     /** PhotonCore's unanswered motor/servo writes. Turn off (Dashboard, between OpModes) to test hub disconnects. */
     public static boolean USE_PHOTON = true;
+    /** Send Expansion Hub / Servo Hub writes from a background thread (still one at a time, acked). Read at OpMode init. */
+    public static boolean ASYNC_HUB_WRITES = false;
     public static long autoStartTime = -1;
     public static boolean autoHang = true;
     public static boolean gotBloodyAnnihilated = false;

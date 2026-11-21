@@ -74,12 +74,11 @@ public class Flywheel {
 
     public static double MAX_SPIN_UP_ACCEL = 900.0;
 
-    // Current limit: motor current is proportional to (applied V - back-EMF V), and back-EMF at a
-    // speed is what the FF_TABLE says holds that speed. Capping the excess caps the current,
-    // so the wheel still gets full power once it is near speed. Raise for faster spin-up.
-    public static double MAX_VOLTS_ABOVE_BACK_EMF = 6.0;
-    /** The current limit applies only below this fraction of the target speed. */
-    public static double CURRENT_LIMIT_BELOW = 0.6;
+    // Per-motor current limit, always on: current = (applied V - back-EMF) / R. Spikes only come
+    // from accelerating (holding speed takes ~1 A), so this costs top speed nothing; spin-up is
+    // still ~0.33 s to 500 in/s at 4 A. Lower it if the hubs brown out, raise it for faster recovery.
+    public static double MAX_MOTOR_AMPS = 4.0;
+    public static double MOTOR_RESISTANCE = 1.3; // ohms: 12 V / 9.2 A stall, bare goBILDA 6000 rpm
 
     public static double SPIN_UP_THRESH = 150.0;
 
@@ -178,10 +177,7 @@ public class Flywheel {
         } else {
             controller.setVelocityGoal(rampedTarget);
             // Inside the controller, so the latency predictor and anti-windup see the capped volts.
-            // Only during spin-up: near speed the current is small anyway, and a wrong FF_TABLE
-            // must never be able to cap the wheel below its target.
-            controller.outputLimits(0.0, filteredVelocity < CURRENT_LIMIT_BELOW * targetVelocity
-                    ? Math.min(12.0, steadyVolts(actualVelocity) + MAX_VOLTS_ABOVE_BACK_EMF) : 12.0);
+            controller.outputLimits(0.0, maxVolts(actualVelocity));
             power = controller.calculateVelocity(filteredVelocity, robot.sensors.getVoltage(),
                     feedforwardVolts(rampedTarget, dt) + integral);
             integral = integrate(integral, rampedTarget - filteredVelocity, dt, controller.isSaturated());
@@ -191,6 +187,8 @@ public class Flywheel {
         detectShot(actualVelocity);
 
         TelemetryUtil.packet.put("Flywheel : Power Applied", power * 100);
+        TelemetryUtil.packet.put("Flywheel : Est Amps Per Motor",
+                motorAmps(power * robot.sensors.getVoltage(), actualVelocity));
         TelemetryUtil.packet.put("Flywheel : Target Velocity", targetVelocity);
         TelemetryUtil.packet.put("Flywheel : Ramped Target", rampedTarget);
         TelemetryUtil.packet.put("Flywheel : Filtered Velocity", filteredVelocity);
@@ -219,6 +217,18 @@ public class Flywheel {
     /** Volts that hold this speed: equal to the motors' back-EMF plus friction there. */
     private static double steadyVolts(double velocity) {
         return usingTable() ? FF_TABLE.volts(velocity) : kS + kV * velocity;
+    }
+
+    /** Back-EMF at this speed: the volts that hold it, minus the friction part (the volts that hold 0). */
+    private static double backEmf(double velocity) { return steadyVolts(velocity) - steadyVolts(0); }
+
+    /** Most volts that keep each motor under MAX_MOTOR_AMPS at this speed. */
+    static double maxVolts(double velocity) {
+        return Math.min(12.0, backEmf(velocity) + MAX_MOTOR_AMPS * MOTOR_RESISTANCE);
+    }
+
+    static double motorAmps(double volts, double velocity) {
+        return (volts - backEmf(velocity)) / MOTOR_RESISTANCE;
     }
 
     static double integrate(double integral, double error, double dt, boolean saturated) {
