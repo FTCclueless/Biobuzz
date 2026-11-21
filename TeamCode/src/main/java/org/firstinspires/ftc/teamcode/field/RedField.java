@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.field;
 
+import com.pedropathing.math.Pose;
+
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 
 public class RedField extends BiobuzzField
@@ -37,5 +39,15 @@ public class RedField extends BiobuzzField
     @Override
     public Pose2d start() {
         return RED_START;
+    }
+
+    @Override
+    public Pose shoot() {
+        return RED_SHOOT;
+    }
+
+    @Override
+    public Pose park() {
+        return RED_PARK;
     }
 }

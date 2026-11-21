@@ -42,8 +42,14 @@ public class OneTipRedAuto extends LinearOpMode
         robot.shooter.state = Shooter.State.TEST;
         robot.shooter.setShooterBlocker(true);
 
+
         Path test = line(new Pose(0, 0).plus(startPose), new Pose(SIZE, 0).plus(startPose)).constant(0);
         Path toFlower = line(startPose, Utils.fromPose2d(BiobuzzField.field().flowerSide())).constant(0);
+
+        Path toGardenNew = line(startPose, Utils.fromPose2d(BiobuzzField.field().garden())).constant(0);
+        Path toShootPosAfterTip = line(Utils.fromPose2d(BiobuzzField.field().garden()), BiobuzzField.field().shoot()).constant(0);
+        Path toFinalPark = line(BiobuzzField.field().shoot(), BiobuzzField.field().park()).constant(0);
+
         Path toIntake = line(new Pose(-SIZE/2+24, 0).plus(startPose), new Pose(-36, 0).plus(startPose)).constant(0);
         Path toGarden = line(new Pose(0, 0).plus(startPose), new Pose(48, 0).plus(startPose)).constant(0);
         Path toShoot = line(new Pose(48, 0).plus(startPose), new Pose(24, -4*24).plus(startPose)).constant(0);
@@ -64,8 +70,14 @@ public class OneTipRedAuto extends LinearOpMode
 
         //shoot(test, false); // fire preloads
         //robot.intake.intake();
-        robot.intake.startPollenRetrieval();
-        //follow(toFlower);
+        robot.intake.intake();
+        follow(toGardenNew);
+        robot.intake.stop();
+        robot.intake.feed();
+        follow(toShootPosAfterTip);
+        shoot(park, true);
+        follow(toFinalPark);
+
         //robot.intake.feed();
         //follow(toShoot);
         //shoot(park, false);
