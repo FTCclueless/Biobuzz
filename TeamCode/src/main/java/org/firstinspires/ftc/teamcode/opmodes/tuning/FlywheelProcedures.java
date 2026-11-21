@@ -91,6 +91,8 @@ final class FlywheelProcedures {
         double steadyError = Double.NaN;
 
         double steadyNoise = Double.NaN;
+        /** Share of the last second spent with the output clipped: near 1 = the target is out of reach. */
+        double saturatedFraction;
         double peak;
     }
 
@@ -208,6 +210,7 @@ final class FlywheelProcedures {
         double dir = Math.signum(to - from);
 
         List<Double> steady = new ArrayList<>();
+        int saturated = 0;
         long start = System.nanoTime();
         while (op.opModeIsActive()) {
             double t = (System.nanoTime() - start) / 1e9;
@@ -222,7 +225,10 @@ final class FlywheelProcedures {
             } else {
                 r.settleTime = Double.NaN;
             }
-            if (t > holdSeconds - 1.0) steady.add(v);
+            if (t > holdSeconds - 1.0) {
+                steady.add(v);
+                if (fw.isSaturated()) saturated++;
+            }
 
             status(String.format(Locale.US, "%s: target %.0f  actual %.0f in/s", name, to, v));
         }
@@ -235,14 +241,15 @@ final class FlywheelProcedures {
             for (double v : steady) var += (v - mean) * (v - mean);
             r.steadyError = to - mean;
             r.steadyNoise = Math.sqrt(var / steady.size());
+            r.saturatedFraction = saturated / (double) steady.size();
         }
         return r;
     }
 
     static String describe(Step r) {
         return String.format(Locale.US,
-                "%s: settle %.2fs  over %.0f  err %+.1f  noise %.1f in/s",
-                r.name, r.settleTime, r.overshoot, r.steadyError, r.steadyNoise);
+                "%s: settle %.2fs  over %.0f  err %+.1f (+ = slow)  noise %.1f in/s  maxed %.0f%%",
+                r.name, r.settleTime, r.overshoot, r.steadyError, r.steadyNoise, 100 * r.saturatedFraction);
     }
 
     void coast(double seconds) {

@@ -146,12 +146,14 @@ public class nPriorityServo extends PriorityDevice {
 
             pos = Utils.minMaxClip(pos, 0.0, 1.0);
 
-            if (type == ServoType.HITEC && pos <= 0.07) {
-                servos[i].setPosition(0.1);
-                servos[i].setPosition(0.07);
+            Servo s = servos[i];
+            double p = pos;
+            if (type == ServoType.HITEC && p <= 0.07) {
+                // One unit, so the async writer can't collapse the sequence to its last value.
+                AsyncWriter.submit(s, () -> { s.setPosition(0.1); s.setPosition(0.07); s.setPosition(p); });
+            } else {
+                AsyncWriter.setPosition(s, p);
             }
-
-            servos[i].setPosition(pos);
         }
 
         lastWrittenAngle = currentIntermediateTargetAngle;

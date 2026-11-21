@@ -4,6 +4,7 @@ import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.Robot;
 import org.firstinspires.ftc.teamcode.control.LQRController;
 import org.firstinspires.ftc.teamcode.control.MechanismModel;
@@ -52,8 +53,10 @@ public class Flywheel {
     public static double kI = 0.1;
     /** Only integrate within this error (in/s), so spin-up and shot dips don't wind it up. */
     public static double I_BAND = 60.0;
-    /** Most the integral may add or remove (V). */
-    public static double I_MAX = 3.0;
+    /** Most the integral may add or remove (V). 3 left ~40 in/s when the feedforward was ~35% high. */
+    public static double I_MAX = 5.0;
+    /** Reads each motor's power and current back from the hub every 10th loop: 4 extra bus reads, keep off for matches. */
+    public static boolean DEBUG_MOTORS = false;
 
     public static double CONTROL_DT = 0.02;
     // Command-to-measurement delay (s) the LQR predicts across: the hub's velocity reading and
@@ -74,12 +77,12 @@ public class Flywheel {
 
     public static double MAX_SPIN_UP_ACCEL = 900.0;
 
-    // Current limit: motor current is proportional to (applied V - back-EMF V), and back-EMF at a
-    // speed is what the FF_TABLE says holds that speed. Capping the excess caps the current,
-    // so the wheel still gets full power once it is near speed. Raise for faster spin-up.
-    public static double MAX_VOLTS_ABOVE_BACK_EMF = 6.0;
-    /** The current limit applies only below this fraction of the target speed. */
-    public static double CURRENT_LIMIT_BELOW = 0.6;
+    // Per-motor current limit, always on: amps ABOVE what holding the current speed takes (~1 A),
+    // i.e. the accelerating current. Measured from the hold volts, not back-EMF, so a table with a
+    // big friction offset can never cap the wheel below its target. Spin-up is still ~0.33 s to
+    // 500 in/s at 4 A. Lower it if the hubs brown out, raise it for faster recovery.
+    public static double MAX_MOTOR_AMPS = 4.0;
+    public static double MOTOR_RESISTANCE = 1.3; // ohms: 12 V / 9.2 A stall, bare goBILDA 6000 rpm
 
     public static double SPIN_UP_THRESH = 150.0;
 
@@ -91,7 +94,8 @@ public class Flywheel {
 
     private final Robot robot;
     public final PriorityMotor flywheel;
-    private final DcMotorEx motorRaw, encoder;
+    private final DcMotorEx motorRaw, motor2, encoder;
+    private int debugLoop = 0;
 
     private LQRController controller;
     private double builtWith_kV, builtWith_kA, builtWith_kS, builtWith_dt, builtWith_latency;
@@ -111,7 +115,7 @@ public class Flywheel {
         this.robot = robot;
 
         motorRaw = robot.hardwareMap.get(DcMotorEx.class, MOTOR_1);
-        DcMotorEx motor2 = robot.hardwareMap.get(DcMotorEx.class, MOTOR_2);
+        motor2 = robot.hardwareMap.get(DcMotorEx.class, MOTOR_2);
         for (DcMotorEx m : new DcMotorEx[]{motorRaw, motor2}) {
             m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
@@ -178,10 +182,7 @@ public class Flywheel {
         } else {
             controller.setVelocityGoal(rampedTarget);
             // Inside the controller, so the latency predictor and anti-windup see the capped volts.
-            // Only during spin-up: near speed the current is small anyway, and a wrong FF_TABLE
-            // must never be able to cap the wheel below its target.
-            controller.outputLimits(0.0, filteredVelocity < CURRENT_LIMIT_BELOW * targetVelocity
-                    ? Math.min(12.0, steadyVolts(actualVelocity) + MAX_VOLTS_ABOVE_BACK_EMF) : 12.0);
+            controller.outputLimits(0.0, maxVolts(actualVelocity));
             power = controller.calculateVelocity(filteredVelocity, robot.sensors.getVoltage(),
                     feedforwardVolts(rampedTarget, dt) + integral);
             integral = integrate(integral, rampedTarget - filteredVelocity, dt, controller.isSaturated());
@@ -191,6 +192,8 @@ public class Flywheel {
         detectShot(actualVelocity);
 
         TelemetryUtil.packet.put("Flywheel : Power Applied", power * 100);
+        TelemetryUtil.packet.put("Flywheel : Est Amps Per Motor",
+                motorAmps(power * robot.sensors.getVoltage(), actualVelocity));
         TelemetryUtil.packet.put("Flywheel : Target Velocity", targetVelocity);
         TelemetryUtil.packet.put("Flywheel : Ramped Target", rampedTarget);
         TelemetryUtil.packet.put("Flywheel : Filtered Velocity", filteredVelocity);
@@ -203,6 +206,17 @@ public class Flywheel {
         TelemetryUtil.packet.put("Flywheel : Integral (V)", integral);
         TelemetryUtil.packet.put("Flywheel : Saturated", controller.isSaturated() ? 1 : 0);
         TelemetryUtil.packet.put("Flywheel : FF source", usingTable() ? 1 : 0);
+        // Held steady, these two should match. Applied well below table = speed reads high or the
+        // feedforward table is stale for this robot; re-run the characterizer.
+        TelemetryUtil.packet.put("Flywheel : Applied V", power * robot.sensors.getVoltage());
+        TelemetryUtil.packet.put("Flywheel : Table V at actual speed", steadyVolts(filteredVelocity));
+        if (DEBUG_MOTORS && ++debugLoop % 10 == 0) {
+            // Both motors share one shaft: equal-magnitude power and similar current = both pulling.
+            TelemetryUtil.packet.put("Flywheel : M1 power (hub)", motorRaw.getPower());
+            TelemetryUtil.packet.put("Flywheel : M2 power (hub)", motor2.getPower());
+            TelemetryUtil.packet.put("Flywheel : M1 amps", motorRaw.getCurrent(CurrentUnit.AMPS));
+            TelemetryUtil.packet.put("Flywheel : M2 amps", motor2.getCurrent(CurrentUnit.AMPS));
+        }
         LogUtil.flywheelTarget.set(targetVelocity);
         LogUtil.flywheelVelocity.set(actualVelocity);
     }
@@ -221,9 +235,23 @@ public class Flywheel {
         return usingTable() ? FF_TABLE.volts(velocity) : kS + kV * velocity;
     }
 
+    /** Back-EMF at this speed: the volts that hold it, minus the friction part (the volts that hold 0). */
+    private static double backEmf(double velocity) { return steadyVolts(velocity) - steadyVolts(0); }
+
+    /** Most volts that keep each motor within MAX_MOTOR_AMPS of its holding current at this speed. */
+    static double maxVolts(double velocity) {
+        return Math.min(12.0, steadyVolts(velocity) + MAX_MOTOR_AMPS * MOTOR_RESISTANCE);
+    }
+
+    static double motorAmps(double volts, double velocity) {
+        return (volts - backEmf(velocity)) / MOTOR_RESISTANCE;
+    }
+
     static double integrate(double integral, double error, double dt, boolean saturated) {
-        // Anti-windup: hold the integral while the output is clipped or the error is large.
-        if (Math.abs(error) >= I_BAND || saturated) return integral;
+        // Anti-windup: hold while the output is clipped, or while far BELOW target (spin-up, shot
+        // dips). Far above target is not exempt: with the output unclipped, that only happens when
+        // the feedforward is too high, and a frozen integral there left a steady ~100 in/s overshoot.
+        if (saturated || error >= I_BAND) return integral;
         return Math.max(-I_MAX, Math.min(I_MAX, integral + kI * error * dt));
     }
 
@@ -269,6 +297,9 @@ public class Flywheel {
     public double getTargetVelocity() { return targetVelocity; }
 
     public double gain() { return controller.velocityGain(); }
+
+    /** True when last loop's output was clipped (full battery or the current cap). */
+    public boolean isSaturated() { return controller.isSaturated(); }
 
     public boolean atVel() { return atVel(AT_VEL_THRESH); }
 

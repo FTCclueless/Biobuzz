@@ -78,7 +78,7 @@ public class Shooter {
             new Servo[]{robot.hardwareMap.get(Servo.class, "flywheelBlocker")},
             "flywheelBlocker", nPriorityServo.ServoType.AXON_MINI,
             0, 0.7, latchBlockPos,
-            new boolean[] {false},
+            new boolean[] {true},
             2, 2
         );
 
