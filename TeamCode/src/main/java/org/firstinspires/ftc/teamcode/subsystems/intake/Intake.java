@@ -75,6 +75,8 @@ public class Intake {
     public static PID flowerMechPID = new PID(1, 0, 0);
     /** A flower move that hasn't arrived by now stops anyway: P-only near the target can stall in the servo deadband. */
     public static long flowerMechTimeoutMs = 2500;
+    public static long FLOWER_MECH_TIME_UP = 1100;
+    public static long FLOWER_MECH_TIME_DOWN = 1000;
 
     public static double PRESENT_CM = 4.0;
     public static boolean BEAM_ACTIVE_LOW = true;
@@ -305,7 +307,8 @@ public class Intake {
 
     private boolean driveFlowerTo(double target) {
         double err = target - flowerAngle;
-        boolean late = System.currentTimeMillis() - flowerMoveStart > flowerMechTimeoutMs;
+        long timeout = (target == flowerMechUpPosition) ? FLOWER_MECH_TIME_UP : FLOWER_MECH_TIME_DOWN;
+        boolean late = System.currentTimeMillis() - flowerMoveStart >= timeout;
         if (Math.abs(err) < flowerMechPositionThreshold || late) {
             flowerMechanismServo.setTargetPower(0);
             return true;
