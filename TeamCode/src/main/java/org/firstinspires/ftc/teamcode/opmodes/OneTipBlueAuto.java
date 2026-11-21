@@ -15,6 +15,7 @@ import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 import org.firstinspires.ftc.teamcode.utils.RunMode;
+import org.firstinspires.ftc.teamcode.utils.Utils;
 
 @Config
 @Autonomous(name = "One Tip Blue Auto", group = "Auto")
@@ -29,7 +30,7 @@ public class OneTipBlueAuto extends LinearOpMode {
     @Override
     public void runOpMode() {
         Globals.RUNMODE = RunMode.AUTO;
-        BiobuzzField.setSide(BiobuzzField.Side.BLUE);
+        BiobuzzField.setSide(BiobuzzField.Side.RED);
 
         robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);
@@ -40,12 +41,13 @@ public class OneTipBlueAuto extends LinearOpMode {
         robot.shooter.state = Shooter.State.TEST;
         robot.shooter.setShooterBlocker(true);
 
+
         Path test = line(new Pose(0, 0).plus(startPose), new Pose(SIZE, 0).plus(startPose)).constant(0);
-        Path toFlower = line(new Pose(0, 0).plus(startPose), new Pose(-SIZE/2+24, 0).plus(startPose)).constant(0);
-        Path toIntake = line(new Pose(-SIZE/2+24, 0).plus(startPose), new Pose(-36, 0).plus(startPose)).constant(0);
-        Path toGarden = line(new Pose(0, 0).plus(startPose), new Pose(48, 0).plus(startPose)).constant(0);
-        Path toShoot = line(new Pose(48, 0).plus(startPose), new Pose(24, -4*24).plus(startPose)).constant(0);
-        Path park = line(new Pose(24, -4*24).plus(startPose), new Pose(48, -4*24).plus(startPose)).constant(0);
+        Path toFlower = line(startPose, Utils.fromPose2d(BiobuzzField.field().flowerSide())).constant(0);
+
+        Path toGardenNew = line(startPose, Utils.fromPose2d(BiobuzzField.field().garden())).constant(0);
+        Path toShootPosAfterTip = line(Utils.fromPose2d(BiobuzzField.field().garden()), BiobuzzField.field().shoot()).constant(0);
+        Path toFinalPark = line(BiobuzzField.field().shoot(), BiobuzzField.field().park()).constant(0);
 
         telemetry.addLine("Blue Auto");
         telemetry.update();
@@ -58,15 +60,22 @@ public class OneTipBlueAuto extends LinearOpMode {
         long t = System.currentTimeMillis();
         robot.shooter.setManual(false);
 
-        robot.shooter.reqAim(true);
+        robot.shooter.reqAim(true); // without this the shooter stays in TEST and never reads READY
 
-        shoot(test, false); // fire preloads
+        //shoot(test, false); // fire preloads
+        //robot.intake.intake();
         robot.intake.intake();
-        follow(toGarden);
+        follow(toGardenNew);
+        robot.intake.stop();
         robot.intake.feed();
-        follow(toShoot);
-        shoot(park, false);
-        follow(park);
+        follow(toShootPosAfterTip);
+        shoot(test, false); // already at the shoot spot; `park` is the old y-offset path and leaves the field on red
+        follow(toFinalPark);
+
+        //robot.intake.feed();
+        //follow(toShoot);
+        //shoot(park, false);
+        //follow(park);
 
         Globals.AUTO_ENDING_POSE = Globals.ROBOT_POSITION.clone();
 

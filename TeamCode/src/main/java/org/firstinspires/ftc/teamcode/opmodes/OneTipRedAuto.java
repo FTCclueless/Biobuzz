@@ -50,11 +50,6 @@ public class OneTipRedAuto extends LinearOpMode
         Path toShootPosAfterTip = line(Utils.fromPose2d(BiobuzzField.field().garden()), BiobuzzField.field().shoot()).constant(0);
         Path toFinalPark = line(BiobuzzField.field().shoot(), BiobuzzField.field().park()).constant(0);
 
-        Path toIntake = line(new Pose(-SIZE/2+24, 0).plus(startPose), new Pose(-36, 0).plus(startPose)).constant(0);
-        Path toGarden = line(new Pose(0, 0).plus(startPose), new Pose(48, 0).plus(startPose)).constant(0);
-        Path toShoot = line(new Pose(48, 0).plus(startPose), new Pose(24, -4*24).plus(startPose)).constant(0);
-        Path park = line(new Pose(24, -4*24).plus(startPose), new Pose(48, -4*24).plus(startPose)).constant(0);
-
         telemetry.addLine("Red Auto");
         telemetry.update();
         while (opModeInInit()) robot.update();
@@ -75,7 +70,7 @@ public class OneTipRedAuto extends LinearOpMode
         robot.intake.stop();
         robot.intake.feed();
         follow(toShootPosAfterTip);
-        shoot(park, false); // already at the shoot spot; `park` is the old y-offset path and leaves the field on red
+        shoot(test, false); // already at the shoot spot; `park` is the old y-offset path and leaves the field on red
         follow(toFinalPark);
 
         //robot.intake.feed();
