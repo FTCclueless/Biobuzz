@@ -59,10 +59,10 @@ public class Intake {
     public static double REJECT_POWER = 1.0;
 
     public static double intakePivotUpPosition = 0.8;
-    public static double intakePivotDownPosition = 0.2;
+    public static double intakePivotDownPosition = 0.25;
 
     public static double backPivotUpPos = 0.7;
-    public static double backPivotDownPos = 0.05;
+    public static double backPivotDownPos = 0.1;
 
     public static double rollerIntakePower = 1;
     public static double rollerFeedPower = 1;
