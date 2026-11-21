@@ -285,6 +285,17 @@ public class Shooter {
         }
     }
 
+    /** Hood servo angle for a ball launch angle (rad, from horizontal), clipped to the hood's travel. */
+    public static double hoodAngleForLaunch(double launchAngle) {
+        return Utils.minMaxClip((launchAngle - hoodSweep) * hoodGearRatio, 0, 1.6);
+    }
+
+    /** Fixed shot: flywheel speed (in/s) and launch angle in degrees, same units as ShotTable2. */
+    public void setShooter(double flywheelVel, double launchDeg) {
+        flywheel.setTargetVelocity(flywheelVel);
+        setHoodAngle(targetHoodAngle = hoodAngleForLaunch(Math.toRadians(launchDeg)));
+    }
+
     public void setShooter(Dist mode) {
         flywheel.setTargetVelocity(mode.flywheelVel);
         setHoodAngle(targetHoodAngle = mode.hoodAngle);
@@ -360,7 +371,7 @@ public class Shooter {
         }
 
         TelemetryUtil.packet.put("Aim : target hood launch angle (deg)", Math.toDegrees(targetHoodAngle));
-        targetHoodAngle = Utils.minMaxClip((targetHoodAngle - hoodSweep) * hoodGearRatio, 0, 1.6);
+        targetHoodAngle = hoodAngleForLaunch(targetHoodAngle);
         double virtualTurretAngle = Math.atan2(virtualY - ROBOT_POSITION.y, virtualX - ROBOT_POSITION.x);
         //turret.setTargetAngle(virtualTurretAngle - ROBOT_POSITION.heading);
     }
