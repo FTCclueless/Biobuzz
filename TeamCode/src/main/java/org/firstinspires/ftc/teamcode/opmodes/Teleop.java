@@ -295,6 +295,10 @@ public class Teleop extends LinearOpMode {
             telemetry.addData("intakeReversed", intakeReversed);
             // The current intake exposes intakeMotor rather than the reference's roller.
             telemetry.addData("intakePower", robot.intake.intakeMotor.getPower());
+            Pose2d p = robot.drivetrain.getPoseEstimate();
+            telemetry.addData("x", "%.2f", p.x);
+            telemetry.addData("y", "%.2f", p.y);
+            telemetry.addData("hdg", "%.2f", p.heading);
             telemetry.update();
         }
 
