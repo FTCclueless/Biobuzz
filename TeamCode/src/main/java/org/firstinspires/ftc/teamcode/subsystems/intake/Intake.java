@@ -73,6 +73,8 @@ public class Intake {
     public static double flowerMechEncoderMaxVoltage = 3.3;
     public static double flowerMechPositionThreshold = 0.1;
     public static PID flowerMechPID = new PID(1, 0, 0);
+    /** A flower move that hasn't arrived by now stops anyway: P-only near the target can stall in the servo deadband. */
+    public static long flowerMechTimeoutMs = 2500;
 
     public static double PRESENT_CM = 4.0;
     public static boolean BEAM_ACTIVE_LOW = true;
@@ -109,6 +111,7 @@ public class Intake {
 
     private double flowerAngle = 0;
     private double lastFlowerRaw = 0;
+    private long flowerMoveStart = 0;
 
     public Intake(Robot robot) {
         this.robot = robot;
@@ -135,8 +138,7 @@ public class Intake {
         robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, backPivot, frontPivot, transferMotor);
 
         flowerEncoder = robot.hardwareMap.get(AnalogInput.class, FLOWER_ENCODER);
-        lastFlowerRaw = flowerRaw();
-        flowerAngle = lastFlowerRaw;
+        resetFlowerAngle();
 
         sensors[Side.LEFT.ordinal()] = new EntranceSensor(robot, LEFT_SENSOR);
         sensors[Side.RIGHT.ordinal()] = new EntranceSensor(robot, RIGHT_SENSOR);
@@ -168,14 +170,17 @@ public class Intake {
                 pivotDown(false);
                 break;
             case INTAKE:
+                flowerMechanismServo.setTargetPower(0); // the other states own the flower too, or it keeps its last PID power
                 direction = runIntake();
                 break;
             case FEED:
-                intakeMotor.setTargetPower(rollerIntakePower);
+                flowerMechanismServo.setTargetPower(0);
+                intakeMotor.setTargetPower(rollerFeedPower);
                 transferMotor.setTargetPower(transferFeedPower);
                 pivotDown(true);
                 break;
             case EJECT:
+                flowerMechanismServo.setTargetPower(0);
                 intakeMotor.setTargetPower(-EJECT_POWER);
                 transferMotor.setTargetPower(-EJECT_POWER);
 
@@ -184,6 +189,7 @@ public class Intake {
                 break;
             case POLLEN_RETRIEVAL_START:
                 intakeMotor.setTargetPower(0);
+                transferMotor.setTargetPower(0);
                 pivotDown(false);
                 if (driveFlowerTo(flowerMechDownPosition)) state = State.POLLEN_RETRIEVAL_INTAKE;
                 break;
@@ -193,6 +199,7 @@ public class Intake {
                 break;
             case POLLEN_RETRIEVAL_END:
                 intakeMotor.setTargetPower(0);
+                transferMotor.setTargetPower(0);
                 pivotDown(false);
                 if (driveFlowerTo(flowerMechUpPosition)) state = State.IDLE;
                 break;
@@ -298,7 +305,8 @@ public class Intake {
 
     private boolean driveFlowerTo(double target) {
         double err = target - flowerAngle;
-        if (Math.abs(err) < flowerMechPositionThreshold) {
+        boolean late = System.currentTimeMillis() - flowerMoveStart > flowerMechTimeoutMs;
+        if (Math.abs(err) < flowerMechPositionThreshold || late) {
             flowerMechanismServo.setTargetPower(0);
             return true;
         }
@@ -314,6 +322,7 @@ public class Intake {
 
     public void stop() {
         if (state == State.POLLEN_RETRIEVAL_START || state == State.POLLEN_RETRIEVAL_INTAKE) {
+            flowerMoveStart = System.currentTimeMillis();
             state = State.POLLEN_RETRIEVAL_END;
         } else if (state != State.POLLEN_RETRIEVAL_END) {
             state = State.IDLE;
@@ -321,9 +330,16 @@ public class Intake {
     }
 
     public void startPollenRetrieval() {
-        lastFlowerRaw = flowerRaw();
-        flowerAngle = lastFlowerRaw;
+        resetFlowerAngle();
+        flowerMoveStart = System.currentTimeMillis();
         state = State.POLLEN_RETRIEVAL_START;
+    }
+
+    /** Assumes the flower is stowed: take the reading nearest flowerMechUpPosition across the 0/2pi wrap. */
+    private void resetFlowerAngle() {
+        lastFlowerRaw = flowerRaw();
+        double d = lastFlowerRaw - flowerMechUpPosition;
+        flowerAngle = flowerMechUpPosition + Math.atan2(Math.sin(d), Math.cos(d));
     }
 
     /*public int getBallCount() { return counter.count(); }

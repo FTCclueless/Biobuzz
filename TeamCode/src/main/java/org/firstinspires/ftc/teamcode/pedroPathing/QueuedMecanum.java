@@ -41,6 +41,8 @@ public class QueuedMecanum extends Mecanum {
     @Override
     public void applyDrive(DrivePowers powers) {
         double[] w = computeWheelPowersUnnormalized(powers);
+        // Pedro's CachedMotor drops NaN/Infinity (degenerate paths); one NaN here would poison all four.
+        for (double v : w) if (!Double.isFinite(v)) return;
         double max = 1;
         for (double v : w) max = Math.max(max, Math.abs(v));
         for (int i = 0; i < 4; i++) {

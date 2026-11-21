@@ -90,14 +90,19 @@ public class RedAuto extends LinearOpMode {
         robot.waitWhile(robot.drivetrain::isBusy);
     }
 
+    static final long READY_TIMEOUT_MS = 2500;
+
     private void shoot(Path shootMovement, boolean goToShootPos){
         if(goToShootPos) {
             robot.drivetrain.follow(shootMovement);
-            robot.waitWhile(() -> robot.drivetrain.follower.isBusy() || robot.shooter.state != Shooter.State.READY);
+            robot.waitWhile(robot.drivetrain.follower::isBusy);
+            robot.waitWhileWithTimeout(() -> robot.shooter.state != Shooter.State.READY, READY_TIMEOUT_MS);
         } else{
-            robot.waitWhile(() -> robot.shooter.state != Shooter.State.READY);
+            robot.waitWhileWithTimeout(() -> robot.shooter.state != Shooter.State.READY, READY_TIMEOUT_MS);
         }
 
+        // A target speed out of the flywheel's reach never reads READY, and AIMING ignores reqShoot: fire at the speed it reached.
+        if (robot.shooter.state == Shooter.State.AIMING) robot.shooter.state = Shooter.State.READY;
         robot.shooter.reqShoot(true);
         robot.waitFor(shootDuration);
         robot.shooter.reqStop(true);

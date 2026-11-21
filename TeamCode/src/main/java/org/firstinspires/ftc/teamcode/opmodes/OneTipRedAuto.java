@@ -64,9 +64,9 @@ public class OneTipRedAuto extends LinearOpMode
         long startedAt = System.currentTimeMillis();
 
         long t = System.currentTimeMillis();
-        //robot.shooter.setManual(false);
+        robot.shooter.setManual(false);
 
-        //robot.shooter.reqAim(true);
+        robot.shooter.reqAim(true); // without this the shooter stays in TEST and never reads READY
 
         //shoot(test, false); // fire preloads
         //robot.intake.intake();
@@ -75,7 +75,7 @@ public class OneTipRedAuto extends LinearOpMode
         robot.intake.stop();
         robot.intake.feed();
         follow(toShootPosAfterTip);
-        shoot(park, true);
+        shoot(park, false); // already at the shoot spot; `park` is the old y-offset path and leaves the field on red
         follow(toFinalPark);
 
         //robot.intake.feed();
@@ -95,14 +95,19 @@ public class OneTipRedAuto extends LinearOpMode
         robot.waitWhile(robot.drivetrain::isBusy);
     }
 
+    static final long READY_TIMEOUT_MS = 2500;
+
     private void shoot(Path shootMovement, boolean goToShootPos){
         if(goToShootPos) {
             robot.drivetrain.follow(shootMovement);
-            robot.waitWhile(() -> robot.drivetrain.follower.isBusy() || robot.shooter.state != Shooter.State.READY);
+            robot.waitWhile(robot.drivetrain.follower::isBusy);
+            robot.waitWhileWithTimeout(() -> robot.shooter.state != Shooter.State.READY, READY_TIMEOUT_MS);
         } else{
-            robot.waitWhile(() -> robot.shooter.state != Shooter.State.READY);
+            robot.waitWhileWithTimeout(() -> robot.shooter.state != Shooter.State.READY, READY_TIMEOUT_MS);
         }
 
+        // A target speed out of the flywheel's reach never reads READY, and AIMING ignores reqShoot: fire at the speed it reached.
+        if (robot.shooter.state == Shooter.State.AIMING) robot.shooter.state = Shooter.State.READY;
         robot.shooter.reqShoot(true);
         robot.waitFor(shootDuration);
         robot.shooter.reqStop(true);
