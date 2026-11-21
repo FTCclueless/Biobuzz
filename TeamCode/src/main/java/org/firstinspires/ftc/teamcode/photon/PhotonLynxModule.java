@@ -115,13 +115,16 @@ public class PhotonLynxModule extends LynxModule {
 
     @Override
     public void sendCommand(LynxMessage command) throws InterruptedException, LynxUnsupportedCommandException {
-        if (PhotonCore.isPhotonPath(command)) {
+        // Keyed off what acquire actually did, like release, so the two can't disagree.
+        if (skippedAcquire.contains(command)) {
             if (PhotonCore.registerSend((LynxCommand<?>) command)) {
                 return;
             }
-            // registerSend declined (module not bound, queue saturated, dangerous access blocked, or
-            // a USB write error). Hand the command back to the SDK, which knows how to nack it,
-            // mark the device as having shut down abnormally, and raise the global warning.
+            // registerSend declined (queue saturated or a USB write error). The SDK path needs the
+            // network lock that acquire skipped, or this write goes out unlocked: take it now, and
+            // stop tracking the skip so release() does the real release.
+            skippedAcquire.remove(command);
+            super.acquireNetworkTransmissionLock(command);
         }
         super.sendCommand(command);
     }

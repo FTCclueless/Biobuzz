@@ -15,6 +15,7 @@ import org.firstinspires.ftc.teamcode.subsystems.park.Flower;
 import org.firstinspires.ftc.teamcode.subsystems.shooter.Shooter;
 import org.firstinspires.ftc.teamcode.subsystems.intake.Intake;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
+import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
 import org.firstinspires.ftc.teamcode.utils.priority.HardwareQueue;
 import org.firstinspires.ftc.teamcode.subsystems.drive.Drivetrain;
@@ -42,7 +43,8 @@ public class Robot {
     public Robot(HardwareMap hardwareMap) { this(hardwareMap, false); }
 
     public Robot(HardwareMap hardwareMap, boolean useVision) {
-        PhotonCore.enable();
+        // PhotonCore is a static singleton, so it must be explicitly turned off when unwanted.
+        if (Globals.USE_PHOTON) PhotonCore.enable(); else PhotonCore.disable();
 
         this.hardwareMap = hardwareMap;
         hardwareQueue = new HardwareQueue();

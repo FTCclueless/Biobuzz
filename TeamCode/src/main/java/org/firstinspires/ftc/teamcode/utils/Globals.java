@@ -11,6 +11,8 @@ public class Globals {
     public static RunMode RUNMODE = RunMode.TESTER;
     public static boolean TESTING_DISABLE_CONTROL = true;
     public static boolean isRed = true;
+    /** PhotonCore's unanswered motor/servo writes. Turn off (Dashboard, between OpModes) to test hub disconnects. */
+    public static boolean USE_PHOTON = true;
     public static long autoStartTime = -1;
     public static boolean autoHang = true;
     public static boolean gotBloodyAnnihilated = false;

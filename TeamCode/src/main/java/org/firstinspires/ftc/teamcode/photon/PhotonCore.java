@@ -125,7 +125,8 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
          * single byte, so letting outstanding commands approach 255 turns that loop into a hang.
          * The cap is clamped below that.</p>
          */
-        private final AtomicInteger maximumParallelCommands = new AtomicInteger(64);
+        // Normal traffic sits at 1-3 outstanding; a small cap hands lost acks back to the SDK fast.
+        private final AtomicInteger maximumParallelCommands = new AtomicInteger(8);
 
         /** Hard ceiling — {@code getNewMessageNumber()} livelocks as the byte-wide space fills. */
         private static final int MAX_OUTSTANDING = 200;
@@ -225,8 +226,15 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
     static boolean isPhotonPath(LynxMessage message) {
         return instance.enabled.get()
                 && message instanceof LynxCommand
+                && isBound(message)
                 && shouldParallelize((LynxCommand<?>) message)
                 && !OpModeManagerImpl.shouldPreventDangerousHardwareAccess();
+    }
+
+    /** Only modules with a Photon transport (parents) take the fast path; see onOpModePreInit. */
+    private static boolean isBound(LynxMessage message) {
+        return message.getModule() instanceof PhotonLynxModule
+                && ((PhotonLynxModule) message.getModule()).getPhotonUsbDevice() != null;
     }
 
     protected static boolean shouldParallelize(LynxCommand<?> command) {
@@ -407,11 +415,11 @@ public class PhotonCore implements Runnable, OpModeManagerNotifier.Notifications
                 map.put(name, photon);
                 replacements.put(module, photon);
 
-                // Bind the transport for *every* module, not just parents. An Expansion Hub daisy-
-                // chained off a Control Hub is a child on the same LynxUsbDevice: previously it
-                // never got an entry, so registerSend declined it and every expansion-hub motor and
-                // servo silently fell back to the stock blocking path.
-                attachTransport(photon);
+                // Parents only. A child (an Expansion Hub on RS485 behind the Control Hub) shares a
+                // half-duplex bus: fire-and-forget writes to it collide with its acks, the SDK
+                // stops hearing it and reports the hub as disconnected. Children use the stock
+                // path, which holds the network lock so one command is on the bus at a time.
+                if (module.isParent()) attachTransport(photon);
 
                 if (module.isParent() && hasChub && CONTROL_HUB == null
                         && LynxConstants.isEmbeddedSerialNumber(module.getSerialNumber())) {
