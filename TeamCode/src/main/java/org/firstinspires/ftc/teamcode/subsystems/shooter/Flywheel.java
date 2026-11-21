@@ -29,28 +29,28 @@ public class Flywheel {
 
     public static boolean MOTOR_REVERSED = false;
 
-    public static boolean MOTOR_2_OPPOSED = true;
+    public static boolean MOTOR_2_OPPOSED = false;
 
     public static double SHOT_DIP = 25.0;
 
     public static long SHOT_LOCKOUT_MS = 150;
 
-    public static double kV = 0.019436;
+    public static double kV = 0.021241;
 
-    public static double kA = 0.002090;
+    public static double kA = 0.003079;
 
-    public static double kS = 1.5667;
+    public static double kS = 1.4615;
 
     // LQR stiffness. Below ~30 the gain stops rising (one-step deadbeat limit) and loop delay makes
     // it overshoot; near top speed there are only ~1.5 V of headroom anyway, so softer costs little.
-    public static double MAX_VELOCITY_ERROR = 100.0;
+    public static double MAX_VELOCITY_ERROR = 30.0;
 
     public static double MAX_EFFORT = 8.0;
 
     // Integral trim, V per (in/s * s). The LQR gain alone is P-only and tops out near
     // kV*e^(-dt/tau)/(1-e^(-dt/tau)) (~0.09 V per in/s here), so a 1 V feedforward error
     // leaves a ~10 in/s offset whatever MAX_VELOCITY_ERROR is. This removes it.
-    public static double kI = 0.1;
+    public static double kI = 0.030;
     /** Only integrate within this error (in/s), so spin-up and shot dips don't wind it up. */
     public static double I_BAND = 60.0;
     /** Most the integral may add or remove (V). 3 left ~40 in/s when the feedforward was ~35% high. */
@@ -61,16 +61,16 @@ public class Flywheel {
     public static double CONTROL_DT = 0.02;
     // Command-to-measurement delay (s) the LQR predicts across: the hub's velocity reading and
     // the motor write each lag about a loop. Without it the near-deadbeat gain oscillates.
-    public static double LATENCY = 0.04;
+    public static double LATENCY = 0.00;
 
     public static final FlywheelFeedforward FF_TABLE = new FlywheelFeedforward();
 
     static {
-        FF_TABLE.put(166.2, 4.736);
-        FF_TABLE.put(259.7, 6.709);
-        FF_TABLE.put(362.8, 8.629);
-        FF_TABLE.put(463.6, 10.509);
-        FF_TABLE.put(554.2, 12.361);
+        FF_TABLE.put(146.4, 4.527);
+        FF_TABLE.put(233.3, 6.428);
+        FF_TABLE.put(314.3, 8.220);
+        FF_TABLE.put(404.2, 10.026);
+        FF_TABLE.put(484.8, 11.731);
     }
 
     public static boolean USE_FF_TABLE = true;

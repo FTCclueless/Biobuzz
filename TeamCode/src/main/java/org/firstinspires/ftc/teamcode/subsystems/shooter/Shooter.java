@@ -41,7 +41,7 @@ public class Shooter {
     public static double hoodSweep = Math.toRadians(26.43);
     public static double hoodGearRatio = 192.0 / 35.0;
 
-    public static double latchBlockPos = 0.1, latchOpenPos = 0.3;
+    public static double latchBlockPos = 0.442, latchOpenPos = 0.121;
 
     public Vector3 ballTarget;
     public Vector3 targetOverride = null;
