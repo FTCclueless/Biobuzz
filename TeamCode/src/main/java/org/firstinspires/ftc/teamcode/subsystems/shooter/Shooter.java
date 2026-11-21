@@ -60,6 +60,7 @@ public class Shooter {
 
     public Shooter(Robot robot) {
         this.robot = robot;
+        forceUpdateVelBool = false; // static: teleop stopped with the override held would leak it into auto
 
         this.flywheel = new Flywheel(robot);
         //this.turret = new Turret(robot);
@@ -173,7 +174,7 @@ public class Shooter {
                 shootRequest = false;
                 predictGoal2AxisInterpolate();
                 setShooterBlocker(false);
-                flywheel.setTargetVelocity(minFlywheelVelocity);
+                flywheel.setTargetVelocity(forceUpdateVelBool ? forceUpdateVel : minFlywheelVelocity);
                 setHoodAngle(targetHoodAngle);
 
                 boolean empty = false;
