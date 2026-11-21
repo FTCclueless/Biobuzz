@@ -65,7 +65,7 @@ public class OneTipRedAuto extends LinearOpMode
         //shoot(test, false); // fire preloads
         //robot.intake.intake();
         robot.intake.startPollenRetrieval();
-        follow(toFlower);
+        //follow(toFlower);
         //robot.intake.feed();
         //follow(toShoot);
         //shoot(park, false);
