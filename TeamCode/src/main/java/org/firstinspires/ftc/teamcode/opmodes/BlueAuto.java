@@ -66,7 +66,7 @@ public class BlueAuto extends LinearOpMode {
         robot.shooter.reqAim(true);
 
         shoot(test, false); // fire preloads
-        if (CHASE_CLUSTERS) new ClusterChaser(robot).run(CHASE_MAX_CLUSTERS, CHASE_BUDGET_MS);
+        if (CHASE_CLUSTERS && robot.balls != null) new ClusterChaser(robot).run(CHASE_MAX_CLUSTERS, CHASE_BUDGET_MS);
         robot.intake.startPollenRetrieval();
         // From wherever the chase left us, not from the start pose.
         Pose2d here = Globals.ROBOT_POSITION;
@@ -77,7 +77,7 @@ public class BlueAuto extends LinearOpMode {
         robot.intake.feed();
         shoot(park, true);
 
-        robot.balls.stop();
+        if (robot.balls != null) robot.balls.stop();
         Globals.AUTO_ENDING_POSE = Globals.ROBOT_POSITION.clone();
 
         telemetry.addData("done in (s)", "%.1f", (System.currentTimeMillis() - startedAt) / 1000.0);

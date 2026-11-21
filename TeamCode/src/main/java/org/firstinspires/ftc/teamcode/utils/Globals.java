@@ -15,6 +15,8 @@ public class Globals {
     public static boolean USE_PHOTON = true;
     /** Send Expansion Hub / Servo Hub writes from a background thread (still one at a time, acked). Read at OpMode init. */
     public static boolean ASYNC_HUB_WRITES = false;
+    /** Limelight ball tracking. Off until the Limelight is wired: OpModes that ask for vision then run without it. */
+    public static boolean USE_VISION = false;
     public static long autoStartTime = -1;
     public static boolean autoHang = true;
     public static boolean gotBloodyAnnihilated = false;

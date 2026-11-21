@@ -25,6 +25,7 @@ public class ClusterChaseAuto extends LinearOpMode {
     public void runOpMode() {
         Globals.RUNMODE = RunMode.AUTO;
         Robot robot = new Robot(hardwareMap, true);
+        if (robot.balls == null) throw new IllegalStateException("Cluster Chase needs Globals.USE_VISION = true (Limelight wired)");
         robot.setStopChecker(this::isStopRequested);
 
         boolean red = Globals.isRed;
