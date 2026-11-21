@@ -130,30 +130,25 @@ way, fix the directions here.
 
 ---
 
-## Turret: three servos, 1:1, with encoder
+## Turret
 
 `subsystems/shooter/Turret.java`
 
-**Range warning:** the servos are 1:1 with the turret, so the turret can only turn as far as a
-servo can: about 322° for the configured `AXON_MINI_EXTENDED`. The requested window of −310°
-to +50° is 360°, so it doesn't fit. The code automatically narrows the limits to the angles
-the servos can actually reach (about −291° to +31° with the current settings). The Turret
-Calibrator prints a warning that confirms this. To get the full 360°, the servos need more
-travel (reprogram them, or change the gearing).
+Turret angles are robot-relative radians. Clockwise is positive viewed from above.
+The turret currently estimates its angle from the servo commands. Encoder trim and
+the encoder-based Turret Calibrator are disabled.
+
+The configured angle limits are -90° and +180°. Servo travel and the 5° margin
+reduce the usable range to about -85° to +83.9° with the current settings.
 
 | Variable | What it does | How | Starting value |
 |---|---|---|---|
-| `ZERO_POSITION` | Servo position (0 to 1) that points the turret straight ahead | **AUTO** Turret Calibrator | 0.0963 |
-| `POSITION_PER_RADIAN` | Change in servo position per radian of turret turn (the sign is the direction) | **AUTO** Turret Calibrator | −1/322° |
-| `TICKS_PER_TURRET_REV` | Encoder ticks per turret revolution (8192 for a REV through-bore, times any gearing) | **MEASURE**. Set it **before** running the calibrator | 32768 |
-| `ENCODER_REVERSED` | Flip if the angle reads backwards when the turret turns counter-clockwise | **TUNE** by turning it by hand | true |
-| `SERVO_TYPE`, `SERVO_REVERSED` | Servo model and per-servo direction. **restart** | **MEASURE** | Axon Mini Extended, all reversed |
-| `ENCODER_PORT` | Motor whose encoder port the turret encoder is plugged into. Empty = no encoder. **restart** | **MEASURE** | empty (unset) |
-| `MIN_ANGLE`, `MAX_ANGLE` | Mechanical limits | **MEASURE** | −310°, +50° |
+| `ZERO_POSITION` | Servo position (0 to 1) that points the turret straight ahead | **TUNE** on the robot | 0.724 |
+| `POSITION_PER_RADIAN` | Change in servo position per radian clockwise | **TUNE** on the robot | 1 / radians(322°) |
+| `SERVO_TYPE`, `SERVO_REVERSED` | Servo model and per-servo direction. **restart** | **MEASURE** | Axon Mini Extended, first reversed |
+| `MIN_ANGLE`, `MAX_ANGLE` | Mechanical limits | **MEASURE** | -90°, +180° |
 | `LIMIT_MARGIN` | Keep-out zone inside each limit | **LEAVE** | 5° |
 | `IN_POSITION_TOLERANCE` | Error within which `inPosition()` allows a shot | **TUNE** to shot accuracy | 1.5° |
-| `TRIM_GAIN` | How fast the encoder correction learns the servo's offset | **LEAVE** | 2.0 |
-| `MAX_TRIM` | Largest correction allowed. Must be more than the backlash the calibrator measures | **TUNE** if the calibrator warns | 4° |
 | `TRIM_WINDOW`, `TRIM_MAX_TARGET_RATE` | Trim only learns near the target and while the target is nearly still | **LEAVE** | 6°, 0.5 rad/s |
 | `TARGET_RATE_FILTER`, `LEAD_LOOPS`, `MAX_TARGET_RATE` | Leads a moving target to cover servo delay | **LEAVE** | 0.9, 1, 8 |
 | `ZERO_SETTLE_MS` | How long the servos must sit at 0 before the encoder is zeroed there | **LEAVE** | 1200 |

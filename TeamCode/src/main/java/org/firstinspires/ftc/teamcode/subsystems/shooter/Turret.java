@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.subsystems.shooter;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
+// import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.Robot;
@@ -15,24 +15,25 @@ public class Turret {
     public static final nPriorityServo.ServoType SERVO_TYPE =
             nPriorityServo.ServoType.AXON_MINI_EXTENDED;
 
-    public static final boolean[] SERVO_REVERSED = {true, true, true};
+    public static final boolean[] SERVO_REVERSED = {true, false, false};
 
-    public static final String ENCODER_PORT = "";
+    // public static final String ENCODER_PORT = "rightFront";
 
-    public static double ZERO_POSITION = 0.0963;
+    // Servo position that points the turret straight ahead.
+    public static double ZERO_POSITION = 0.694;
 
-    public static double POSITION_PER_RADIAN = -SERVO_TYPE.positionPerRadian;
+    public static double POSITION_PER_RADIAN = SERVO_TYPE.positionPerRadian;
 
-    public static boolean USE_ENCODER = true;
+    // public static boolean USE_ENCODER = true;
 
-    public static double TICKS_PER_TURRET_REV = 8192 * 4;
+    // public static double TICKS_PER_TURRET_REV = 8192 * 4;
 
-    public static boolean ENCODER_REVERSED = true;
+    // public static boolean ENCODER_REVERSED = false;
 
-    public static long ZERO_SETTLE_MS = 1200;
+    // public static long ZERO_SETTLE_MS = 1200;
 
-    public static double MIN_ANGLE = Math.toRadians(-310);
-    public static double MAX_ANGLE = Math.toRadians(50);
+    public static double MIN_ANGLE = Math.toRadians(-180);
+    public static double MAX_ANGLE = Math.toRadians(90);
     public static double LIMIT_MARGIN = Math.toRadians(5);
 
     public static double TARGET_RATE_FILTER = 0.9;
@@ -42,28 +43,28 @@ public class Turret {
     public static double MAX_TARGET_RATE = 8.0;
     public static double IN_POSITION_TOLERANCE = Math.toRadians(1.5);
 
-    public static double TRIM_GAIN = 2.0;
+    // public static double TRIM_GAIN = 2.0;
 
-    public static double TRIM_WINDOW = Math.toRadians(6);
+    // public static double TRIM_WINDOW = Math.toRadians(6);
 
-    public static double MAX_TRIM = Math.toRadians(4);
+    // public static double MAX_TRIM = Math.toRadians(4);
 
-    public static double TRIM_MAX_TARGET_RATE = 0.5;
+    // public static double TRIM_MAX_TARGET_RATE = 0.5;
 
     private final Robot robot;
     public final nPriorityServo servos;
-    private final DcMotorEx encoder;
+    // private final DcMotorEx encoder;
 
-    private boolean zeroed = false;
-    private long settleStart = 0;
-    private int zeroTicks = 0;
-    private double encoderAngle = 0;
+    // private boolean zeroed = false;
+    // private long settleStart = 0;
+    // private int zeroTicks = 0;
+    // private double encoderAngle = 0;
 
     private double requestedTarget = 0;
     private double target = 0;
     private double lastTarget = 0;
     private double targetRate = 0;
-    private double trim = 0;
+    // private double trim = 0;
     private double command = 0;
     private Double manualPosition = null;
 
@@ -72,24 +73,24 @@ public class Turret {
         Servo[] s = new Servo[SERVO_NAMES.length];
         for (int i = 0; i < s.length; i++) s[i] = robot.hardwareMap.get(Servo.class, SERVO_NAMES[i]);
 
-        servos = new nPriorityServo(s, "turret", SERVO_TYPE, 0, 1, 0, SERVO_REVERSED, 5, 6);
+        servos = new nPriorityServo(s, "turret", SERVO_TYPE, 0, 1, ZERO_POSITION, SERVO_REVERSED, 5, 6);
         robot.hardwareQueue.addDevice(servos);
-        encoder = ENCODER_PORT.isEmpty() ? null : robot.hardwareMap.tryGet(DcMotorEx.class, ENCODER_PORT);
+        // encoder = ENCODER_PORT.isEmpty() ? null : robot.hardwareMap.tryGet(DcMotorEx.class, ENCODER_PORT);
     }
 
-    public boolean hasEncoder() { return encoder != null; }
+    // public boolean hasEncoder() { return encoder != null; }
 
-    private boolean encoderActive() { return encoder != null && USE_ENCODER; }
+    // private boolean encoderActive() { return encoder != null && USE_ENCODER; }
 
-    private void readEncoder() {
-        if (encoder == null) return;
-        double sign = ENCODER_REVERSED ? -1 : 1;
-        encoderAngle = sign * (encoder.getCurrentPosition() - zeroTicks)
-                / TICKS_PER_TURRET_REV * 2 * Math.PI;
-    }
+    // private void readEncoder() {
+        // if (encoder == null) return;
+        // double sign = ENCODER_REVERSED ? -1 : 1;
+        // encoderAngle = sign * (encoder.getCurrentPosition() - zeroTicks)
+                // / TICKS_PER_TURRET_REV * 2 * Math.PI;
+    // }
 
     public void update() {
-        readEncoder();
+        // readEncoder();
         double dt = robot.sensors.loopTime > 0 ? robot.sensors.loopTime : 0.02;
 
         double rawRate = (target - lastTarget) / dt;
@@ -97,17 +98,17 @@ public class Turret {
         targetRate = Math.max(-MAX_TARGET_RATE, Math.min(MAX_TARGET_RATE, targetRate));
         lastTarget = target;
 
-        updateZero();
+        // updateZero();
 
-        if (zeroed && encoderActive() && TRIM_GAIN > 0
-                && Math.abs(targetRate) < TRIM_MAX_TARGET_RATE
-                && Math.abs(target - encoderAngle) < TRIM_WINDOW) {
-            trim += TRIM_GAIN * (target - encoderAngle) * dt;
-            trim = Math.max(-MAX_TRIM, Math.min(MAX_TRIM, trim));
-        }
+        // if (zeroed && encoderActive() && TRIM_GAIN > 0
+                // && Math.abs(targetRate) < TRIM_MAX_TARGET_RATE
+                // && Math.abs(target - encoderAngle) < TRIM_WINDOW) {
+            // trim += TRIM_GAIN * (target - encoderAngle) * dt;
+            // trim = Math.max(-MAX_TRIM, Math.min(MAX_TRIM, trim));
+        // }
 
         double lead = targetRate * dt * LEAD_LOOPS;
-        command = clampToWindow(target + lead + trim);
+        command = clampToWindow(target + lead);
 
         double pos = manualPosition != null ? manualPosition
                 : ZERO_POSITION + command * POSITION_PER_RADIAN;
@@ -117,36 +118,36 @@ public class Turret {
         TelemetryUtil.packet.put("Turret : Target (deg)", Math.toDegrees(target));
         TelemetryUtil.packet.put("Turret : Error (deg)", Math.toDegrees(target - getAngle()));
         TelemetryUtil.packet.put("Turret : Servo estimate (deg)", Math.toDegrees(servoEstimate()));
-        TelemetryUtil.packet.put("Turret : Trim (deg)", Math.toDegrees(trim));
-        TelemetryUtil.packet.put("Turret : Zeroed", zeroed ? 1 : 0);
+        // TelemetryUtil.packet.put("Turret : Trim (deg)", Math.toDegrees(trim));
+        // TelemetryUtil.packet.put("Turret : Zeroed", zeroed ? 1 : 0);
         LogUtil.turretAngle.set(getAngle());
         LogUtil.turretTarget.set(target);
     }
 
-    private void updateZero() {
-        if (zeroed || manualPosition != null) return;
-        boolean holdingZero = target == 0 && servos.inPosition(Math.toRadians(0.5));
-        if (!holdingZero) {
-            settleStart = 0;
-            return;
-        }
-        long now = System.currentTimeMillis();
-        if (settleStart == 0) settleStart = now;
-        if (now - settleStart >= ZERO_SETTLE_MS) zeroEncoderHere();
-    }
+    // private void updateZero() {
+        // if (zeroed || manualPosition != null) return;
+        // boolean holdingZero = target == 0 && servos.inPosition(Math.toRadians(0.5));
+        // if (!holdingZero) {
+            // settleStart = 0;
+            // return;
+        // }
+        // long now = System.currentTimeMillis();
+        // if (settleStart == 0) settleStart = now;
+        // if (now - settleStart >= ZERO_SETTLE_MS) zeroEncoderHere();
+    // }
 
-    public void zeroEncoderHere() {
-        if (encoder == null) return;
-        zeroTicks = encoder.getCurrentPosition();
-        encoderAngle = 0;
-        trim = 0;
-        zeroed = true;
-    }
+    // public void zeroEncoderHere() {
+        // if (encoder == null) return;
+        // zeroTicks = encoder.getCurrentPosition();
+        // encoderAngle = 0;
+        // trim = 0;
+        // zeroed = true;
+    // }
 
-    public void rezero() {
-        zeroed = false;
-        settleStart = 0;
-    }
+    // public void rezero() {
+        // zeroed = false;
+        // settleStart = 0;
+    // }
 
     private double servoEstimate() {
         double servoPos = servos.getCurrentAngle() * SERVO_TYPE.positionPerRadian;
@@ -171,6 +172,11 @@ public class Turret {
         return Math.max(lowLimit(), Math.min(highLimit(), a));
     }
 
+    static double fromFieldBearing(double fieldBearing, double robotHeading) {
+        return robotHeading - fieldBearing;
+    }
+
+    // Robot-relative radians, positive clockwise viewed from above.
     public void setTargetAngle(double robotRelativeAngle) {
         requestedTarget = robotRelativeAngle;
         target = chooseReachable(robotRelativeAngle, getAngle());
@@ -197,7 +203,7 @@ public class Turret {
 
         double toLo = Math.abs(normalize(desired - lo));
         double toHi = Math.abs(normalize(desired - hi));
-        return toLo < toHi ? lo : hi;
+        return toLo <= toHi ? lo : hi;
     }
 
     private static double normalize(double a) {
@@ -209,16 +215,16 @@ public class Turret {
     }
 
     public double getAngle() {
-        return zeroed && encoderActive() ? encoderAngle : servoEstimate();
+        return servoEstimate();
     }
 
-    public double getEncoderAngle() { return encoderAngle; }
+    // public double getEncoderAngle() { return encoderAngle; }
 
     public double getTargetAngle() { return target; }
 
-    public double getTrim() { return trim; }
+    // public double getTrim() { return trim; }
 
-    public boolean isZeroed() { return zeroed; }
+    // public boolean isZeroed() { return zeroed; }
 
     public boolean inPosition() { return inPosition(IN_POSITION_TOLERANCE); }
 

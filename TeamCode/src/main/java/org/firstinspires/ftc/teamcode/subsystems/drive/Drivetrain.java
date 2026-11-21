@@ -86,6 +86,7 @@ public class Drivetrain {
 
     public void setPoseEstimate(Pose2d pose) {
         follower.setPose(toPedro(pose));
+
         ROBOT_POSITION = pose.clone();
         lastGlobalVelocity = null;
         Globals.ROBOT_GLOBAL_ACCELERATION = new Pose2d(0, 0, 0);

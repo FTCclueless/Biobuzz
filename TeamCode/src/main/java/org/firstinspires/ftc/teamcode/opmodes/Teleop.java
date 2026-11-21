@@ -37,13 +37,8 @@ public class Teleop extends LinearOpMode {
         robot.shooter.setManual(false);
         robot.shooter.setShooterBlocker(true);
 
-        // Aiming uses the distance from the field pose to our hive, so the pose must be real:
-        // carry over where auto ended, else start at our alliance's start pose.
-        Pose2d autoEnd = Globals.AUTO_ENDING_POSE;
-        boolean fromAuto = autoEnd.x != 0 || autoEnd.y != 0 || autoEnd.heading != 0;
         BiobuzzField.setSide(Globals.isRed ? BiobuzzField.Side.RED : BiobuzzField.Side.BLUE);
-        robot.drivetrain.setPoseEstimate(fromAuto ? autoEnd.clone() : BiobuzzField.field().start());
-
+        robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
 
         ButtonToggle lb1 = new ButtonToggle();
         ButtonToggle rb1 = new ButtonToggle();
@@ -78,17 +73,22 @@ public class Teleop extends LinearOpMode {
             // Alliance: gamepad1 X = blue, B = red. Picks which hive the shooter aims at.
             if ((gamepad1.x && Globals.isRed) || (gamepad1.b && !Globals.isRed)) {
                 BiobuzzField.setSide(gamepad1.b ? BiobuzzField.Side.RED : BiobuzzField.Side.BLUE);
-                if (!fromAuto) robot.drivetrain.setPoseEstimate(BiobuzzField.field().start());
             }
             telemetry.addData("Alliance (gp1 X blue / B red)", Globals.isRed ? "RED" : "BLUE");
-            telemetry.addData("Start pose", fromAuto ? "from auto " + ROBOT_POSITION : "alliance start " + ROBOT_POSITION);
             robot.sensors.update();
             robot.drivetrain.update();
+            telemetry.addData("Pose", ROBOT_POSITION);
             TelemetryUtil.sendTelemetry();
             telemetry.update();
         }
 
+        if (isStopRequested()) return;
+        robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
+
         while (!isStopRequested()) {
+            if (rb2.isClicked(gamepad2.right_bumper)) {
+                robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
+            }
             robot.drivetrain.drive(gamepad1);
 
             // INTAKE: same gamepad1 controls as the reference Teleop.

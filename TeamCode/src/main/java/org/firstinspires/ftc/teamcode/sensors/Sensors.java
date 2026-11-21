@@ -77,8 +77,8 @@ public class Sensors {
 
         Canvas fieldOverlay = TelemetryUtil.packet.fieldOverlay();
         /*DashboardUtil.drawRobot(fieldOverlay, ROBOT_POSITION, "#00ff00",
-                robot.shooter.turret.getAngle(), "#00e000c0",
-                robot.shooter.turret.getTargetAngle(), "#8000ff");*/
+                -robot.shooter.turret.getAngle(), "#00e000c0",
+                -robot.shooter.turret.getTargetAngle(), "#8000ff");*/
 
         LogUtil.driveCurrentX.set(ROBOT_POSITION.x);
         LogUtil.driveCurrentY.set(ROBOT_POSITION.y);

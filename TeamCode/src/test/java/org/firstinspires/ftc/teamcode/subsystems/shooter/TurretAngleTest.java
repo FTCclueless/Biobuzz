@@ -29,6 +29,27 @@ public class TurretAngleTest {
         assertEquals(r(26), Turret.chooseReachable(r(40), 0), 1e-6);
     }
 
+    @Test public void fieldBearingConvertsToClockwiseFromRobotHeading() {
+        assertEquals(r(20), Turret.fromFieldBearing(r(40), r(60)), EPS);
+        assertEquals(r(-20), Turret.fromFieldBearing(r(80), r(60)), EPS);
+        assertEquals(0, Turret.fromFieldBearing(r(60), r(60)), EPS);
+        assertEquals(r(20), Turret.chooseReachable(Turret.fromFieldBearing(r(170), r(-170)), 0), EPS);
+    }
+
+    @Test public void clockwiseServoMappingPreservesZeroAndTravel() {
+        Turret.MIN_ANGLE = r(-90);
+        Turret.MAX_ANGLE = r(180);
+        Turret.ZERO_POSITION = 0.724;
+        Turret.POSITION_PER_RADIAN = 1.0 / r(322);
+
+        assertEquals(0, Turret.servoAngleAt(0.724), EPS);
+        assertEquals(r(20), Turret.servoAngleAt(0.724 + 20.0 / 322), EPS);
+        assertEquals(r(-20), Turret.servoAngleAt(0.724 - 20.0 / 322), EPS);
+        assertEquals(r(-85), Turret.lowLimit(), EPS);
+        assertEquals(r(83.872), Turret.highLimit(), EPS);
+        assertEquals(r(83.872), Turret.chooseReachable(r(90), 0), EPS);
+    }
+
     @Test public void plainAngleInRange() {
         assertEquals(r(90), Turret.chooseReachable(r(90), 0), EPS);
     }
@@ -66,7 +87,7 @@ public class TurretAngleTest {
         assertEquals(r(-85), Turret.chooseReachable(r(-120), 0), EPS);
     }
 
-    @Test public void realWindowMinus310ToPlus50() {
+    @Test public void asymmetricWindowMinus310ToPlus50() {
         Turret.MIN_ANGLE = r(-310);
         Turret.MAX_ANGLE = r(50);
         assertEquals(r(-90), Turret.chooseReachable(r(-90), 0), EPS);

@@ -17,9 +17,9 @@ import java.util.Locale;
 @Config
 @Autonomous(name = "Turret Calibrator", group = "test")
 public class TurretCalibrator extends LinearOpMode {
-    public static double SWEEP_NEGATIVE_DEG = -120;
+    public static double SWEEP_NEGATIVE_DEG = -30;
 
-    public static double SWEEP_POSITIVE_DEG = 30;
+    public static double SWEEP_POSITIVE_DEG = 120;
     public static double STEP_DEG = 15;
 
     public static double PROBE = 0.02;
@@ -206,7 +206,7 @@ public class TurretCalibrator extends LinearOpMode {
         lines.add(String.format(Locale.US, "points: %d   fit residual: %.2f deg", points.size(),
                 Math.toDegrees(rms)));
         lines.add(String.format(Locale.US, "backlash: %.2f deg", Math.toDegrees(lash)));
-        lines.add(String.format(Locale.US, "servo position at -310 / +50 deg: %.3f / %.3f",
+        lines.add(String.format(Locale.US, "servo position at min / max angle: %.3f / %.3f",
                 posAtMin, posAtMax));
         lines.add("");
         lines.add("=== paste into Turret ===");
@@ -215,7 +215,7 @@ public class TurretCalibrator extends LinearOpMode {
         lines.add("");
         if (posAtMin < 0 || posAtMin > 1 || posAtMax < 0 || posAtMax > 1) {
             lines.add("WARNING: the full -310..+50 window does not fit in the servos' travel.");
-            lines.add("  The turret cannot reach its whole range with this gearing.");
+            lines.add("  The turret cannot reach its configured range with this gearing.");
         }
         if (Math.toDegrees(rms) > 1.5) {
             lines.add("WARNING: points do not lie on a straight line. Check for slipping");

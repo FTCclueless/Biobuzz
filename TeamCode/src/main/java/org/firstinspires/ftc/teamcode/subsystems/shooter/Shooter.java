@@ -30,7 +30,7 @@ public class Shooter {
 
     private final Robot robot;
     public final Flywheel flywheel;
-    //public final Turret turret;
+    public final Turret turret;
     public final nPriorityServo hood, flywheelBlocker;
     private final ShotTable2 shooterTable;
 
@@ -63,7 +63,7 @@ public class Shooter {
         forceUpdateVelBool = false; // static: teleop stopped with the override held would leak it into auto
 
         this.flywheel = new Flywheel(robot);
-        //this.turret = new Turret(robot);
+        this.turret = new Turret(robot);
 
         this.shooterTable = new ShotTable2();
 
@@ -95,7 +95,7 @@ public class Shooter {
                 flywheel.setTargetVelocity(0);
                 setHoodAngle(0.0);
                 setShooterBlocker(true);
-                //turret.setTargetAngle(0);
+                turret.setTargetAngle(0);
 
                 if (aimRequest) {
                     aimRequest = false;
@@ -110,13 +110,13 @@ public class Shooter {
                 //TelemetryUtil.packet.put("Aim: aimLauncherV8", "before");
                 //boolean aimResult = aimLauncherV8();
                 predictGoal2AxisInterpolate();
-                //boolean turretResult = turret.inPosition();
+                boolean turretResult = turret.inPosition();
                 //TelemetryUtil.packet.put("Aim: aimResult", aimResult);
                 //TelemetryUtil.packet.put("Aim: turretResult", turretResult);
                 TelemetryUtil.packet.put("Aim: hood.inPosition", hood.inPosition());
                 TelemetryUtil.packet.put("Aim: atVel", atVel());
                 // An empty or out-of-range shot table gives 0 in/s, which would count as "at speed".
-                if (/*turretResult && */ this.atVel() && hood.inPosition() && minFlywheelVelocity > 0) {
+                if (turretResult &&  this.atVel() && hood.inPosition() && minFlywheelVelocity > 0) {
                     state = State.READY;
                 }
                 flywheel.setTargetVelocity(forceUpdateVelBool ? forceUpdateVel : minFlywheelVelocity);
@@ -210,14 +210,14 @@ public class Shooter {
 
                 if (turretTrackInManual) {
                     double turretAngle = Math.atan2(ballTarget.getY() - ROBOT_POSITION.y, ballTarget.getX() - ROBOT_POSITION.x);
-                    //turret.setTargetAngle(turretAngle - ROBOT_POSITION.heading);
+                    //turret.setTargetAngle(Turret.fromFieldBearing(turretAngle, ROBOT_POSITION.heading));
                 }
                 break;
             }
         }
 
         flywheel.update();
-        //turret.update();
+        turret.update();
 
         updateTelemetry();
     }
@@ -247,7 +247,7 @@ public class Shooter {
     public void setManual(boolean on) {
         if (on) {
             state = State.TEST;
-            //turret.setTargetAngle(0);
+            turret.setTargetAngle(0);
             setShooter(Dist.OFF);
         } else {
             state = State.IDLE;
@@ -374,6 +374,6 @@ public class Shooter {
         TelemetryUtil.packet.put("Aim : target hood launch angle (deg)", Math.toDegrees(targetHoodAngle));
         targetHoodAngle = hoodAngleForLaunch(targetHoodAngle);
         double virtualTurretAngle = Math.atan2(virtualY - ROBOT_POSITION.y, virtualX - ROBOT_POSITION.x);
-        //turret.setTargetAngle(virtualTurretAngle - ROBOT_POSITION.heading);
+        turret.setTargetAngle(Turret.fromFieldBearing(virtualTurretAngle, ROBOT_POSITION.heading));
     }
 }

@@ -191,7 +191,7 @@ Step-tests the closed loop and reports settle time, overshoot and steady-state e
 | Overshoots or oscillates | Lower `kI` |
 | Slow to recover after a shot | Raise `kI` until it starts to overshoot, then back off |
 
-### Step 7 — Turret Calibrator (Autonomous, group "test")
+### Step 7 — Turret Calibrator (currently disabled)
 
 The turret is three servos geared together, with an external encoder. Servos run their own
 position loop, so there is no LQR to tune; what needs measuring is how servo position maps to
@@ -201,9 +201,9 @@ Set `Turret.TICKS_PER_TURRET_REV` **first** — every angle depends on it.
 
 1. **During init:** D-pad left/right (bumpers for bigger steps) until the turret points exactly
    straight ahead, then press **A**.
-2. **Start:** it probes which way the servos turn the turret, sweeps toward −120°, comes back
-   up through the same points (that measures backlash), then does a short sweep toward +30°
-   planned from what it has learned so it stops well short of the +50° limit. The encoder is
+2. **Start:** it probes which way the servos turn the turret, sweeps toward −30°, comes back
+   up through the same points (that measures backlash), then does a sweep toward +120°
+   planned from the measured servo travel and current angular limits. The encoder is
    checked after every move.
 
 | Gives you | Goes into |
@@ -212,7 +212,7 @@ Set `Turret.TICKS_PER_TURRET_REV` **first** — every angle depends on it.
 | `POSITION_PER_RADIAN` | `Turret.POSITION_PER_RADIAN` |
 | backlash (deg) | Should be under `MAX_TRIM` (4°) so encoder trim can correct it |
 
-It warns if the full −310°…+50° window doesn't fit in the servos' travel, if the points aren't
+It warns if the configured angle window doesn't fit in the servos' travel, if the points aren't
 on a straight line (slipping gears, or wrong `TICKS_PER_TURRET_REV`), or if backlash is too
 large for trim.
 
