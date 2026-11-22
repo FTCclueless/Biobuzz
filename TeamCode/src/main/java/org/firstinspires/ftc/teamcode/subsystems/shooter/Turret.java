@@ -174,7 +174,7 @@ public class Turret {
         return Math.max(lowLimit(), Math.min(highLimit(), a));
     }
 
-    static double fromFieldBearing(double fieldBearing, double robotHeading) {
+    public static double fromFieldBearing(double fieldBearing, double robotHeading) {
         return robotHeading - fieldBearing;
     }
 
