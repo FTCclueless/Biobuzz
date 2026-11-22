@@ -69,6 +69,8 @@ public class Teleop extends LinearOpMode {
         ButtonToggle rb2 = new ButtonToggle();
         ButtonToggle guide2 = new ButtonToggle();
         ButtonToggle up2 = new ButtonToggle();
+        ButtonToggle down2 = new ButtonToggle();
+        ButtonToggle left2 = new ButtonToggle();
 
         boolean intakeReversed = false;
         boolean flywheelOn = false;
@@ -89,8 +91,15 @@ public class Teleop extends LinearOpMode {
         if (isStopRequested()) return;
 
         while (!isStopRequested()) {
-            if (rb2.isClicked(gamepad2.right_bumper)) {
+            // Corner reset: gp2 RB or d-pad left. Evaluate both so each keeps its own edge state.
+            boolean cornerRb = rb2.isClicked(gamepad2.right_bumper);
+            boolean cornerDpad = left2.isClicked(gamepad2.dpad_left);
+            if (cornerRb || cornerDpad) {
                 robot.drivetrain.setPoseEstimate(nearestCorner(robot.drivetrain.getPoseEstimate()));
+                gamepad2.rumble(200);
+            }
+            if (down2.isClicked(gamepad2.dpad_down)) { // pose to (0, 0, 0): field centre, facing +x
+                robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
                 gamepad2.rumble(200);
             }
             robot.drivetrain.drive(gamepad1);
