@@ -67,6 +67,7 @@ public class Teleop extends LinearOpMode {
         ButtonToggle lb2 = new ButtonToggle();
         ButtonToggle rb2 = new ButtonToggle();
         ButtonToggle guide2 = new ButtonToggle();
+        ButtonToggle up2 = new ButtonToggle();
 
         boolean intakeReversed = false;
         boolean flywheelOn = false;
@@ -107,14 +108,19 @@ public class Teleop extends LinearOpMode {
                 robot.intake.setRollerDirection(intakeReversed);
             }
 
-            // Hold to creep balls up the transfer; tap repeatedly to jiggle a stuck one.
-            robot.intake.nudgeTransfer = gamepad1.dpad_up;
+            // Hold the left trigger to creep balls up the transfer; tap repeatedly to jiggle a stuck one.
+            robot.intake.nudgeTransfer = gamepad1.left_trigger > triggerThresh;
 
             if (flowerToggle.isClicked(gamepad1.dpad_down)) {
                 robot.intake.toggleFlower();
             }
 
             // SHOOTER
+            if (up2.isClicked(gamepad2.dpad_up)) { // turret kill: hold at 0 deg / press again to track
+                robot.shooter.turretKilled = !robot.shooter.turretKilled;
+                gamepad2.rumble(robot.shooter.turretKilled ? 600 : 150);
+            }
+
             if (x2.isClicked(gamepad2.x)) {
                 robot.shooter.pulseShooterBlocker();
             }
@@ -170,7 +176,7 @@ public class Teleop extends LinearOpMode {
             boolean closeClicked = b1.isClicked(gamepad1.b);
             boolean midClicked = y1.isClicked(gamepad1.y);
             boolean farClicked = x1.isClicked(gamepad1.x);
-            boolean leftTriggerClicked = lt1.isClicked(gamepad1.left_trigger > triggerThresh);
+            boolean pivotSwapClicked = lt1.isClicked(gamepad1.right_stick_button); // left trigger is the transfer nudge
             boolean secondLeftTriggerClicked = lt2.isClicked(gamepad2.left_trigger > triggerThresh);
             boolean rightTriggerClicked = rt1.isClicked(gamepad1.right_trigger > triggerThresh);
             boolean closeHeld = b1.isHeld(gamepad1.b, 500);
@@ -179,7 +185,7 @@ public class Teleop extends LinearOpMode {
             Shooter.forceUpdateVelBool = false;
 
             // Fixed-shot preset, from either mode. Shoot with right bumper as in manual; press again for off.
-            if (up1.isClicked(gamepad1.dpad_left)) { // dpad up is the transfer nudge
+            if (up1.isClicked(gamepad1.dpad_left)) {
                 boolean presetOn = robot.shooter.state == Shooter.State.TEST
                         && robot.shooter.flywheel.getTargetVelocity() == PRESET_FLYWHEEL;
                 if (presetOn) {
@@ -283,8 +289,8 @@ public class Teleop extends LinearOpMode {
                 }
             }
 
-            // Each press switches the selected side; holding a trigger does not repeat.
-            if (leftTriggerClicked || secondLeftTriggerClicked) {
+            // Each press switches the selected side (gp1 right stick click, gp2 left trigger); holding does not repeat.
+            if (pivotSwapClicked || secondLeftTriggerClicked) {
                 robot.intake.overridePivotSide = true;
                 robot.intake.pivotSideFront = !robot.intake.pivotSideFront;
             }
@@ -300,6 +306,7 @@ public class Teleop extends LinearOpMode {
                     robot.shooter.minFlywheelVelocity, robot.shooter.targetHoodAngle);
             telemetry.addData("flywheelOn (manual)", flywheelOn);
             telemetry.addData("flywheelAtVel", robot.shooter.atVel());
+            telemetry.addData("turret", robot.shooter.turretKilled ? "KILLED (held at 0, gp2 dpad up)" : "tracking");
             telemetry.addData("turret (deg)", "%.1f / %.1f%s", Math.toDegrees(robot.shooter.turret.getAngle()),
                     Math.toDegrees(robot.shooter.turret.getTargetAngle()), robot.shooter.turret.atLimit() ? "  AT LIMIT" : "");
             telemetry.addData("flywheel position", robot.shooter.flywheel.getRawPosition());

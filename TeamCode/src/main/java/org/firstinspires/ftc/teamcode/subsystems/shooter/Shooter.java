@@ -36,6 +36,8 @@ public class Shooter {
 
     private boolean aimRequest = false, shootRequest = false, stopRequest = false;
     public boolean turretTrackInManual = false;
+    /** Turret held at 0 deg in every state (e.g. it's broken or binding); READY then ignores the turret. */
+    public boolean turretKilled = false;
 
     public double targetHoodAngle = 0.0;
     public static double hoodSweep = Math.toRadians(26.43);
@@ -54,6 +56,8 @@ public class Shooter {
     public static double SOTMThreshold = 10;
     /** Shoot-on-the-move: lead the hive by the robot's velocity. Off = always aim at the hive itself. */
     public static boolean SOTM = false;
+    /** Teleop IDLE pre-spin (in/s): the wheel waits here, and aiming only has to go to the table speed. */
+    public static double TELEOP_IDLE_VELOCITY = 420;
     public static double flywheelExitReadyThresh = 50;
 
     public static boolean autoShootIfInZone = false;
@@ -99,10 +103,12 @@ public class Shooter {
         switch (state) {
             case IDLE: {
                 stopRequest = false;
-                flywheel.setTargetVelocity(0);
+                // Teleop: pre-spin and keep the turret on the hive, so a shot only waits for the table speed.
+                boolean teleop = Globals.RUNMODE == RunMode.TELEOP;
+                flywheel.setTargetVelocity(teleop ? TELEOP_IDLE_VELOCITY : 0);
                 setHoodAngle(0.0);
                 setShooterBlocker(true);
-                turret.setTargetAngle(0);
+                if (teleop) trackHive(); else turret.setTargetAngle(0);
 
                 if (aimRequest) {
                     aimRequest = false;
@@ -118,7 +124,7 @@ public class Shooter {
                 //boolean aimResult = aimLauncherV8();
                 predictGoal2AxisInterpolate();
                 // At a limit the turret "arrives" pointing the wrong way: hold READY until the driver turns the robot.
-                boolean turretResult = turret.inPosition() && !turret.atLimit();
+                boolean turretResult = turretKilled || (turret.inPosition() && !turret.atLimit());
                 //TelemetryUtil.packet.put("Aim: aimResult", aimResult);
                 //TelemetryUtil.packet.put("Aim: turretResult", turretResult);
                 TelemetryUtil.packet.put("Aim: hood.inPosition", hood.inPosition());
@@ -214,18 +220,14 @@ public class Shooter {
                 break;
             }
             case TEST: {
-                updateBallTarget();
-
-                if (turretTrackInManual) {
-                    double turretAngle = Math.atan2(ballTarget.getY() - ROBOT_POSITION.y, ballTarget.getX() - ROBOT_POSITION.x);
-                    turret.setTargetAngle(Turret.fromFieldBearing(turretAngle, ROBOT_POSITION.heading));
-                }
+                if (turretTrackInManual) trackHive();
                 break;
             }
         }
 
         updateBlockerPulse();
         flywheel.update();
+        if (turretKilled) turret.setTargetAngle(0); // after the states, so nothing re-aims it this loop
         turret.update();
 
         updateTelemetry();
@@ -300,6 +302,13 @@ public class Shooter {
     public void updateBallTarget() {
         ballTarget = targetOverride != null ? targetOverride
                 : BiobuzzField.nearestHiveCell(Globals.isRed, ROBOT_POSITION);
+    }
+
+    /** Point the turret at the nearest hive cell (no shoot-on-the-move lead). */
+    private void trackHive() {
+        updateBallTarget();
+        double bearing = Math.atan2(ballTarget.getY() - ROBOT_POSITION.y, ballTarget.getX() - ROBOT_POSITION.x);
+        turret.setTargetAngle(Turret.fromFieldBearing(bearing, ROBOT_POSITION.heading));
     }
 
     public boolean atVel() { return flywheel.atVel(); }
