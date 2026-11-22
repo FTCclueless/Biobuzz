@@ -96,21 +96,31 @@ public class Teleop extends LinearOpMode {
             robot.drivetrain.drive(gamepad1);
 
             // INTAKE: same gamepad1 controls as the reference Teleop.
-            if (lb1.isClicked(gamepad1.right_trigger > triggerThresh)) { // right trigger: intake on/off
-                if (robot.intake.state == Intake.State.IDLE) robot.intake.reqIntake(true);
-                else robot.intake.reqOff(true);
+            // LB cycles: intake + transfer -> intake only -> off. The stage is read from the intake itself,
+            // so a shot, outtake or reverse that changed it starts the cycle over from the top.
+            if (lb1.isClicked(gamepad1.left_bumper)) {
+                boolean intakingForward = robot.intake.state == Intake.State.INTAKE && !intakeReversed;
+                if (!intakingForward) {
+                    robot.intake.transferOnIntake = true;
+                    robot.intake.reqIntake(true);
+                } else if (robot.intake.transferOnIntake) {
+                    robot.intake.transferOnIntake = false;
+                } else {
+                    robot.intake.reqOff(true);
+                }
                 intakeReversed = false;
                 robot.intake.setRollerDirection(intakeReversed);
             }
 
             if (a1.isClicked(gamepad1.a && !gamepad1.start)) {
                 intakeReversed = robot.intake.state == Intake.State.IDLE || !intakeReversed;
+                robot.intake.transferOnIntake = false;
                 robot.intake.reqIntake(true);
                 robot.intake.setRollerDirection(intakeReversed);
             }
 
-            // Hold the left bumper to creep balls up the transfer; tap repeatedly to jiggle a stuck one.
-            robot.intake.nudgeTransfer = gamepad1.left_bumper;
+            // Hold the right stick down to creep balls up the transfer; tap repeatedly to jiggle a stuck one.
+            robot.intake.nudgeTransfer = gamepad1.right_stick_button;
 
             if (flowerToggle.isClicked(gamepad1.dpad_down)) {
                 robot.intake.toggleFlower();
@@ -177,9 +187,9 @@ public class Teleop extends LinearOpMode {
             boolean closeClicked = b1.isClicked(gamepad1.b);
             boolean midClicked = y1.isClicked(gamepad1.y);
             boolean farClicked = x1.isClicked(gamepad1.dpad_right); // X is hold-to-outtake
-            boolean pivotSwapClicked = lt1.isClicked(gamepad1.right_stick_button);
+            boolean pivotSwapClicked = lt1.isClicked(gamepad1.left_trigger > triggerThresh); // left trigger: swap pivot side
             boolean secondLeftTriggerClicked = lt2.isClicked(gamepad2.left_trigger > triggerThresh);
-            boolean stopShooterClicked = rt1.isClicked(gamepad1.left_trigger > triggerThresh); // left trigger: flywheel off / stop aiming
+            boolean stopShooterClicked = rt1.isClicked(gamepad1.right_trigger > triggerThresh); // right trigger: flywheel off / stop aiming
             boolean closeHeld = b1.isHeld(gamepad1.b, 500);
             boolean midHeld = y1.isHeld(gamepad1.y, 500);
             boolean farHeld = x1.isHeld(gamepad1.dpad_right, 500);
@@ -290,7 +300,7 @@ public class Teleop extends LinearOpMode {
                 }
             }
 
-            // Each press switches the selected side (gp1 right stick click, gp2 left trigger); holding does not repeat.
+            // Each press switches the selected side (gp1 left trigger, gp2 left trigger); holding does not repeat.
             if (pivotSwapClicked || secondLeftTriggerClicked) {
                 robot.intake.overridePivotSide = true;
                 robot.intake.pivotSideFront = !robot.intake.pivotSideFront;

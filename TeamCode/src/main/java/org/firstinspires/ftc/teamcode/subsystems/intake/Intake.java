@@ -94,6 +94,8 @@ public class Intake {
     private boolean reversed = false;
     /** Teleop sets this each loop while the nudge button is held; only acts when the transfer would otherwise be off. */
     public boolean nudgeTransfer = false;
+    /** INTAKE also runs the transfer forward (teleop's first LB stage). Off = rollers only. */
+    public boolean transferOnIntake = false;
     private int lastDirection = 0;
 
     private long rejectStart = -1;
@@ -201,7 +203,7 @@ public class Intake {
         }*/
         pivotDown(true);
         intakeMotor.setTargetPower(rollerIntakePower * (reversed ? -1 : 1));
-        transferMotor.setTargetPower(reversed ? -transferIntakePower : 0); // shooting (FEED) runs the transfer
+        transferMotor.setTargetPower(reversed ? -transferIntakePower : transferOnIntake ? transferIntakePower : 0);
 
         return reversed ? -1 : 1;
     }
