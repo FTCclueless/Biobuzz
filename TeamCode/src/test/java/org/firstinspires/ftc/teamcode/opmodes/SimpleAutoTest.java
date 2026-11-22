@@ -30,9 +30,42 @@ public class SimpleAutoTest {
         assertEquals(0, red.heading, 1e-9);
         assertEquals(72 - w, blue.y, 1e-9);
         assertEquals(Math.PI, blue.heading, 1e-9);
-        // Corners on each alliance's flower-station side: red +x, blue -x.
-        assertEquals(72 - l, SimpleAuto.startPose(true, true).x, 1e-9);
-        assertEquals(-72 + l, SimpleAuto.startPose(false, true).x, 1e-9);
+        // Loading-zone corners, at each alliance's drivers' left (red -x, blue +x), back on the side wall,
+        // and not in the LOADING ZONE (24..48 in from centre along the wall) at the start (G304.E).
+        assertEquals(-72 + l, SimpleAuto.startPose(true, true).x, 1e-9);
+        assertEquals(72 - l, SimpleAuto.startPose(false, true).x, 1e-9);
+        assertTrue(72 - 2 * l > 48);
+    }
+
+    @Test
+    public void cornerParkEndsInTheLoadingZone() {
+        // The whole robot (length along the wall) must stay between the zone's seams, 24..48 in from centre.
+        double l = Globals.ROBOT_LENGTH / 2;
+        for (boolean red : new boolean[]{true, false}) {
+            BiobuzzField.setSide(red ? BiobuzzField.Side.RED : BiobuzzField.Side.BLUE);
+            Pose2d s = SimpleAuto.startPose(red, true);
+            Pose end = SimpleAuto.overshoot(new Pose(s.x, s.y, s.heading), BiobuzzField.field().park(),
+                    SimpleAuto.PARK_EXTRA_IN);
+            double ax = Math.abs(end.x());
+            assertTrue((red ? "red" : "blue") + " end x " + end.x(), ax - l >= 24 && ax + l <= 48);
+        }
+        BiobuzzField.setSide(BiobuzzField.Side.RED);
+    }
+
+    @Test
+    public void parkPosesScoreLeaveAndPark() {
+        // LOADING ZONE: 11 in deep off the alliance wall, between the seams 24 and 48 in from the drivers'-left
+        // corner (red: x -48..-24, blue: x 24..48). The robot lies along the wall.
+        for (BiobuzzField.Side s : BiobuzzField.Side.values()) {
+            BiobuzzField.setSide(s);
+            Pose p = BiobuzzField.field().park();
+            double gap = 72 - Math.abs(p.y()) - Globals.ROBOT_WIDTH / 2; // robot edge to the alliance wall
+            assertTrue(s + " touches the wall: no LEAVE", gap > 0.5);
+            assertTrue(s + " misses the zone: no PARK", gap < 11 - 2);
+            double ax = (s == BiobuzzField.Side.RED ? -1 : 1) * p.x();
+            assertTrue(s + " wrong part of the wall", ax > 24 && ax < 48);
+        }
+        BiobuzzField.setSide(BiobuzzField.Side.RED);
     }
 
     @Test

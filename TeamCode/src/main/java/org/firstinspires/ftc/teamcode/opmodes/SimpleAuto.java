@@ -15,9 +15,9 @@ import org.firstinspires.ftc.teamcode.utils.RunMode;
 import org.firstinspires.ftc.teamcode.utils.Utils;
 
 /**
- * Body of the simple autos. PARK: leave the start and drive to the field's park pose.
+ * Body of the simple autos. PARK: leave the start and drive into the LOADING ZONE (LEAVE + PARK).
  * SHOOT: leave toward the centre line, then auto-aim and fire the preloads.
- * CORNER_PARK: start in the flower / preload corner, drive a few inches off the alliance wall.
+ * CORNER_PARK: start in the corner beside the LOADING ZONE, drive into it (LEAVE + PARK).
  * The Red/Blue subclasses only pick the alliance (which teleop then inherits) and the mode.
  *
  * Placement, every auto: the robot's RIGHT side flat on the alliance wall. Red faces +x (heading 0),
@@ -37,8 +37,6 @@ public abstract class SimpleAuto extends LinearOpMode {
     public static long SHOOT_MS = 1500;
     /** Every park drives this much past its target, so a robot stopping just short still counts. */
     public static double PARK_EXTRA_IN = 1.0;
-    /** CORNER_PARK: how far to move off the alliance wall (before PARK_EXTRA_IN). */
-    public static double CORNER_PARK_DISTANCE = 6.0;
 
     public enum Mode { PARK, SHOOT, CORNER_PARK }
 
@@ -49,12 +47,13 @@ public abstract class SimpleAuto extends LinearOpMode {
 
     /**
      * Right side on the alliance wall (centre half a robot width off it), red facing +x, blue facing -x.
-     * Middle of the wall (in front of the hive), or the flower / preload corner with the front on the side wall.
+     * Middle of the wall (in front of the hive), or the corner at the drivers' left, beside the LOADING ZONE,
+     * with the back on the side wall (red -x, blue +x). There the robot ends 6 in short of the zone (G304.E).
      */
     static Pose2d startPose(boolean red, boolean corner) {
-        double sign = red ? 1 : -1; // red's corner is +x, blue's is -x (same side as each flower station)
+        double sign = red ? 1 : -1;
         double y = -sign * (72 - Globals.ROBOT_WIDTH / 2);
-        double x = corner ? sign * (72 - Globals.ROBOT_LENGTH / 2) : 0;
+        double x = corner ? -sign * (72 - Globals.ROBOT_LENGTH / 2) : 0;
         return new Pose2d(x, y, red ? 0 : Math.PI);
     }
 
@@ -87,7 +86,7 @@ public abstract class SimpleAuto extends LinearOpMode {
             robot.update();
             telemetry.addData("Auto", "%s %s", side(), mode());
             telemetry.addData("Place", "right side on the %s wall, facing %s, %s", side(), red ? "+x" : "-x",
-                    mode() == Mode.CORNER_PARK ? "front against the flower-corner side wall" : "centred on the wall");
+                    mode() == Mode.CORNER_PARK ? "loading-zone corner, back on the side wall" : "centred on the wall");
             telemetry.addData("Pose reset", robot.drivetrain.getPoseResetStatus());
             telemetry.update();
         }
@@ -103,10 +102,8 @@ public abstract class SimpleAuto extends LinearOpMode {
                 fire();
                 break;
             case PARK:
+            case CORNER_PARK: // same target, the corner start is just closer to it
                 drive(from, overshoot(from, BiobuzzField.field().park(), PARK_EXTRA_IN), start.heading);
-                break;
-            case CORNER_PARK:
-                drive(from, leaveSpot(start, CORNER_PARK_DISTANCE + PARK_EXTRA_IN), start.heading);
                 break;
         }
 

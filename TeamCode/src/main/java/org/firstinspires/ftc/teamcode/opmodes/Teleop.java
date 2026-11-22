@@ -93,13 +93,19 @@ public class Teleop extends LinearOpMode {
         String lastPoseReset = "none";
         int poseResets = 0;
         while (!isStopRequested()) {
-            // Corner reset: gp2 RB or d-pad left. Evaluate both so each keeps its own edge state.
-            boolean cornerRb = rb2.isClicked(gamepad2.right_bumper);
-            boolean cornerDpad = left2.isClicked(gamepad2.dpad_left);
-            if (cornerRb || cornerDpad) {
+            // Corner reset: gp2 RB = nearest corner, heading kept.
+            if (rb2.isClicked(gamepad2.right_bumper)) {
                 robot.drivetrain.setPoseEstimate(nearestCorner(robot.drivetrain.getPoseEstimate()));
                 gamepad2.rumble(200);
                 lastPoseReset = "corner";
+                poseResets++;
+            }
+            // Auto-corner reset: gp2 d-pad left = this alliance's corner-auto start pose, heading included.
+            // Place the robot exactly as for that auto (by the loading zone, right side on the alliance wall).
+            if (left2.isClicked(gamepad2.dpad_left)) {
+                robot.drivetrain.setPoseEstimate(SimpleAuto.startPose(isRed, true));
+                gamepad2.rumble(200);
+                lastPoseReset = "auto corner";
                 poseResets++;
             }
             // Zero reset: gp2 d-pad down or back. Evaluate both so each keeps its own edge state.

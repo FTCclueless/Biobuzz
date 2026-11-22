@@ -23,16 +23,27 @@ public abstract class BiobuzzField
 
     public static Pose2d RED_PIVOT = new Pose2d(0, -HIVE_PIVOT_Y); // in
     public static Pose2d BLUE_PIVOT = new Pose2d(0, HIVE_PIVOT_Y); // in
+    // Layout from Competition Manual §9.3 Figure 9-2 / §10.5.4 (+/- 1 in). +x is the audience wall, which is on
+    // the red drivers' right; the field is 180-deg symmetric, so blue's right is -x (the rear wall).
+    // 4 FLOWERS on the perimeter, 2 per alliance side: one on the alliance wall 2 tiles to the drivers' right
+    // (ALLY_STATION, next to the GARDEN), one on the side wall 2 tiles out on the drivers' left (FAR).
     public static Pose2d RED_FLOWER_ALLY_STATION = new Pose2d(4*24-72, 0-72); // in
     public static Pose2d RED_FLOWER_SIDE = new Pose2d(12, -72+Globals.ROBOT_FORWARD_LENGTH/2); // in
     public static Pose2d BLUE_FLOWER_ALLY_STATION = new Pose2d(2*24-72, 6*24-72); // in
     public static Pose2d BLUE_FLOWER_SIDE = new Pose2d(-12, 72-Globals.ROBOT_FORWARD_LENGTH/2); // in
-    public static Pose2d RED_GARDEN = new Pose2d(-3*24, -72+Globals.ROBOT_FORWARD_LENGTH/2);
-    public static Pose2d BLUE_GARDEN = new Pose2d(3*24, 72-Globals.ROBOT_FORWARD_LENGTH/2);
+    public static Pose2d RED_FAR_FLOWER = new Pose2d(-72, -24); // in, on the rear wall
+    public static Pose2d BLUE_FAR_FLOWER = new Pose2d(72, 24); // in, on the audience wall
+    // GARDEN zone centre (not a robot pose): a 23 x 2 in strip along the audience (red) / rear (blue) wall,
+    // starting in the corner at the drivers' right. 4 POLLEN are staged in it, in a line from that corner.
+    public static Pose2d RED_GARDEN = new Pose2d(72 - 1, -72 + 23.0/2);
+    public static Pose2d BLUE_GARDEN = new Pose2d(-72 + 1, 72 - 23.0/2);
     public static Pose RED_SHOOT = new Pose(-24, 48);
     public static Pose BLUE_SHOOT = new Pose(24, -48);
-    public static Pose RED_PARK = new Pose(36, -60);
-    public static Pose BLUE_PARK = new Pose(-36, 60);
+    // PARK scores when the robot is partly in its LOADING ZONE: 23 x 11 in on its own alliance wall, between the
+    // tile seams 1 and 2 tiles from the drivers'-left corner. Robot parallel to the wall, 4 in off it so it
+    // overlaps the zone by ~7 in and still isn't touching the wall (LEAVE).
+    public static Pose RED_PARK = new Pose(-36, -72 + Globals.ROBOT_WIDTH/2 + 4);
+    public static Pose BLUE_PARK = new Pose(36, 72 - Globals.ROBOT_WIDTH/2 - 4);
 
 
     public static Pose2d RED_START = new Pose2d(0, -72+Globals.ROBOT_FORWARD_LENGTH/2);
@@ -61,6 +72,7 @@ public abstract class BiobuzzField
     public abstract Pose2d pivot();
     public abstract Pose2d flowerAllyStation();
     public abstract Pose2d flowerSide();
+    public abstract Pose2d farFlower();
     public abstract int[] audienceAprilTags();
     public abstract int[] scoringAprilTags();
     public abstract Pose2d garden();

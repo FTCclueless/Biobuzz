@@ -63,9 +63,6 @@ public class Intake {
     /** Transfer while intaking (LB stage 1). It stalls against the closed blocker, and a stalled motor's
      *  current scales with power: at 1.0 this sagged the battery to ~9 V and starved the flywheel. */
     public static double transferIntakePower = 0.5;
-    /** Intaking backs off below SHED_BELOW_VOLTS (rollers and transfer x SHED_SCALE) until the battery
-     *  recovers past SHED_RECOVER_VOLTS, so the flywheel keeps the voltage it needs. Shooting is never shed. */
-    public static double SHED_BELOW_VOLTS = 10.5, SHED_RECOVER_VOLTS = 11.2, SHED_SCALE = 0.5;
     public static double transferFeedPower = 1;
     /** Transfer power while the driver holds the nudge button: low enough not to jam balls into the closed blocker. */
     public static double transferNudgePower = 0.4;
@@ -105,7 +102,6 @@ public class Intake {
     public boolean transferOnIntake = false;
     /** INTAKE runs the rollers at rollerSlowIntakePower instead of rollerIntakePower. */
     public boolean slowIntake = false;
-    private boolean shedding = false;
     private int lastDirection = 0;
 
     private long rejectStart = -1;
@@ -212,13 +208,8 @@ public class Intake {
             return 0;
         }*/
         pivotDown(true);
-        // Two thresholds, so the shed doesn't flick on and off every loop as the voltage recovers.
-        double volts = robot.sensors.getVoltage();
-        if (volts < SHED_BELOW_VOLTS) shedding = true;
-        else if (volts > SHED_RECOVER_VOLTS) shedding = false;
-        double scale = shedding ? SHED_SCALE : 1.0;
-        intakeMotor.setTargetPower(scale * (slowIntake ? rollerSlowIntakePower : rollerIntakePower) * (reversed ? -1 : 1));
-        transferMotor.setTargetPower(scale * (reversed ? -transferIntakePower : transferOnIntake ? transferIntakePower : 0));
+        intakeMotor.setTargetPower((slowIntake ? rollerSlowIntakePower : rollerIntakePower) * (reversed ? -1 : 1));
+        transferMotor.setTargetPower(reversed ? -transferIntakePower : transferOnIntake ? transferIntakePower : 0);
 
         return reversed ? -1 : 1;
     }
@@ -325,7 +316,6 @@ public class Intake {
 
     private void updateTelemetry() {
         TelemetryUtil.packet.put("Intake : state", state);
-        TelemetryUtil.packet.put("Intake : shedding for low battery", shedding);
         //TelemetryUtil.packet.put("Intake : balls", counter.count());
         //TelemetryUtil.packet.put("Intake : full", isFull());
         TelemetryUtil.packet.put("Intake : rejecting", rejecting() ? rejectReason : "no");

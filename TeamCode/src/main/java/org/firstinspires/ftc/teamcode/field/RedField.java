@@ -22,6 +22,11 @@ public class RedField extends BiobuzzField
     }
 
     @Override
+    public Pose2d farFlower() {
+        return RED_FAR_FLOWER;
+    }
+
+    @Override
     public int[] audienceAprilTags() {
         return RED_AUDIENCE_APRIL_TAGS;
     }
