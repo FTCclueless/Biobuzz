@@ -55,6 +55,8 @@ public class Intake {
 
     public static double backPivotUpPos = 0.7;
     public static double backPivotDownPos = 0.2;
+    /** While shooting (FEED), the lowered pivot goes this much further down than its intake down position. */
+    public static double shootPivotExtraDown = 0.05;
 
     public static double rollerIntakePower = 1;
     /** Roller power for teleop's intake-only LB stage. */
@@ -225,8 +227,10 @@ public class Intake {
         boolean bothDown = down && (reversed || state == State.EJECT);
         boolean frontDown = down && (bothDown || pivotSide());
         boolean backDown = down && (bothDown || !pivotSide());
-        frontPivot.setTargetPos(frontDown ? intakePivotDownPosition : intakePivotUpPosition);
-        backPivot.setTargetPos(backDown ? backPivotDownPos : backPivotUpPos);
+        // Down is the lower servo value on both pivots, so "further down" subtracts.
+        double extra = state == State.FEED ? shootPivotExtraDown : 0;
+        frontPivot.setTargetPos(frontDown ? Math.max(0, intakePivotDownPosition - extra) : intakePivotUpPosition);
+        backPivot.setTargetPos(backDown ? Math.max(0, backPivotDownPos - extra) : backPivotUpPos);
     }
 
     private void checkRejects(long now, boolean intaking) {
