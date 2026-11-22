@@ -30,6 +30,10 @@ public class Drivetrain {
     public static PID headingPID = new PID(0.4, 0.0, 0.002);
     public static double HEADING_K_STATIC = 0.15;
     public static double ACCEL_FILTER = 0.3;
+    /** A pose reset counts as applied once the Pinpoint reads back within these of the requested pose. */
+    public static double POSE_RESET_TOL_IN = 2.0, POSE_RESET_TOL_DEG = 3.0;
+    /** Re-send the reset this many times (one per loop) before giving up. */
+    public static int POSE_RESET_RETRIES = 10;
 
     public final Follower follower;
     private final Robot robot;
@@ -37,6 +41,9 @@ public class Drivetrain {
     private double[][] pathDrawPoints;
     private Pose2d lastGlobalVelocity = null;
     private boolean wasLocking = false;
+    private Pose2d pendingPose = null;
+    private int poseRetries = 0;
+    private String poseResetStatus = "none";
     /** Same device the localizer bulk-reads each loop; status and rate below are cached from that read. */
     private final GoBildaPinpointDriver pinpoint;
 
@@ -49,6 +56,7 @@ public class Drivetrain {
     public void update() {
         if (!DRIVETRAIN_ENABLED) follower.stop();
         follower.update();
+        confirmPoseReset();
         publishState();
         updateTelemetry();
     }
@@ -88,8 +96,32 @@ public class Drivetrain {
 
     public void stop() { follower.stop(); }
 
+    /** The Pinpoint takes a pose write over I2C and a dropped write is silent, so read it back and re-send. */
+    private void confirmPoseReset() {
+        if (pendingPose == null) return;
+        Pose p = follower.pose();
+        boolean applied = Math.hypot(p.x() - pendingPose.x, p.y() - pendingPose.y) <= POSE_RESET_TOL_IN
+                && Math.abs(AngleUtil.clipAngle(p.heading() - pendingPose.heading)) <= Math.toRadians(POSE_RESET_TOL_DEG);
+        if (applied) {
+            poseResetStatus = poseRetries == 0 ? "applied" : "applied after " + poseRetries + " re-sends";
+            pendingPose = null;
+        } else if (poseRetries < POSE_RESET_RETRIES) {
+            poseRetries++;
+            follower.setPose(toPedro(pendingPose));
+            poseResetStatus = "re-sending (" + poseRetries + ")";
+        } else {
+            poseResetStatus = "FAILED: Pinpoint ignored the pose write";
+            pendingPose = null;
+        }
+    }
+
+    public String getPoseResetStatus() { return poseResetStatus; }
+
     public void setPoseEstimate(Pose2d pose) {
         follower.setPose(toPedro(pose));
+        pendingPose = pose.clone();
+        poseRetries = 0;
+        poseResetStatus = "sent";
 
         ROBOT_POSITION = pose.clone();
         lastGlobalVelocity = null;
@@ -138,6 +170,7 @@ public class Drivetrain {
         TelemetryUtil.packet.put("Pinpoint Heading (deg)", Math.toDegrees(pose.heading()));
         TelemetryUtil.packet.put("Pinpoint status", pinpoint.getDeviceStatus().toString()); // READY when healthy
         TelemetryUtil.packet.put("Pinpoint rate (Hz)", pinpoint.getFrequency());
+        TelemetryUtil.packet.put("Pose reset", poseResetStatus);
         // Draw the measured pose every loop, including manual driving and init.
         DashboardUtil.drawRobot(TelemetryUtil.packet.fieldOverlay(),
                 new Pose2d(pose.x(), pose.y(), pose.heading()), "#00C853");

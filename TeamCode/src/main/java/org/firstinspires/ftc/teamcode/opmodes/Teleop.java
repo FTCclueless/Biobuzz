@@ -90,6 +90,8 @@ public class Teleop extends LinearOpMode {
 
         if (isStopRequested()) return;
 
+        String lastPoseReset = "none";
+        int poseResets = 0;
         while (!isStopRequested()) {
             // Corner reset: gp2 RB or d-pad left. Evaluate both so each keeps its own edge state.
             boolean cornerRb = rb2.isClicked(gamepad2.right_bumper);
@@ -97,10 +99,17 @@ public class Teleop extends LinearOpMode {
             if (cornerRb || cornerDpad) {
                 robot.drivetrain.setPoseEstimate(nearestCorner(robot.drivetrain.getPoseEstimate()));
                 gamepad2.rumble(200);
+                lastPoseReset = "corner";
+                poseResets++;
             }
-            if (down2.isClicked(gamepad2.dpad_down)) { // pose to (0, 0, 0): field centre, facing +x
+            // Zero reset: gp2 d-pad down or back. Evaluate both so each keeps its own edge state.
+            boolean zeroDpad = down2.isClicked(gamepad2.dpad_down);
+            boolean zeroBack = back2.isClicked(gamepad2.back);
+            if (zeroDpad || zeroBack) { // pose to (0, 0, 0): field centre, facing +x
                 robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
                 gamepad2.rumble(200);
+                lastPoseReset = "zero";
+                poseResets++;
             }
             robot.drivetrain.drive(gamepad1);
 
@@ -339,6 +348,9 @@ public class Teleop extends LinearOpMode {
             // The current intake exposes intakeMotor rather than the reference's roller.
             telemetry.addData("intakePower", robot.intake.intakeMotor.getPower());
             Pose2d p = robot.drivetrain.getPoseEstimate();
+            // Count goes up but x/y don't change = the Pinpoint ignored the write; count stays = the press never arrived.
+            telemetry.addData("pose resets", "%d (last: %s, %s)  gp2 dpad down: %b  back: %b", poseResets, lastPoseReset,
+                    robot.drivetrain.getPoseResetStatus(), gamepad2.dpad_down, gamepad2.back);
             telemetry.addData("x", "%.2f", p.x);
             telemetry.addData("y", "%.2f", p.y);
             telemetry.addData("hdg", "%.2f", p.heading);
