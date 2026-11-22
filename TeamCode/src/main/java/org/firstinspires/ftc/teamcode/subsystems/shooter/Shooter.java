@@ -52,6 +52,8 @@ public class Shooter {
     public double minFlywheelVelocity = 0.0;
 
     public static double SOTMThreshold = 10;
+    /** Shoot-on-the-move: lead the hive by the robot's velocity. Off = always aim at the hive itself. */
+    public static boolean SOTM = false;
     public static double flywheelExitReadyThresh = 50;
 
     public static boolean autoShootIfInZone = false;
@@ -115,13 +117,14 @@ public class Shooter {
                 //TelemetryUtil.packet.put("Aim: aimLauncherV8", "before");
                 //boolean aimResult = aimLauncherV8();
                 predictGoal2AxisInterpolate();
-                boolean turretResult = turret.inPosition();
+                // At a limit the turret "arrives" pointing the wrong way: hold READY until the driver turns the robot.
+                boolean turretResult = turret.inPosition() && !turret.atLimit();
                 //TelemetryUtil.packet.put("Aim: aimResult", aimResult);
                 //TelemetryUtil.packet.put("Aim: turretResult", turretResult);
                 TelemetryUtil.packet.put("Aim: hood.inPosition", hood.inPosition());
                 TelemetryUtil.packet.put("Aim: atVel", atVel());
                 // An empty or out-of-range shot table gives 0 in/s, which would count as "at speed".
-                if (/*turretResult &&*/  this.atVel() /*&& hood.inPosition() && minFlywheelVelocity > 0*/) {
+                if (turretResult && this.atVel() /*&& hood.inPosition() && minFlywheelVelocity > 0*/) {
                     state = State.READY;
                 }
                 flywheel.setTargetVelocity(forceUpdateVelBool ? forceUpdateVel : minFlywheelVelocity);
@@ -215,7 +218,7 @@ public class Shooter {
 
                 if (turretTrackInManual) {
                     double turretAngle = Math.atan2(ballTarget.getY() - ROBOT_POSITION.y, ballTarget.getX() - ROBOT_POSITION.x);
-                    //turret.setTargetAngle(Turret.fromFieldBearing(turretAngle, ROBOT_POSITION.heading));
+                    turret.setTargetAngle(Turret.fromFieldBearing(turretAngle, ROBOT_POSITION.heading));
                 }
                 break;
             }
@@ -388,7 +391,7 @@ public class Shooter {
         minFlywheelVelocity = shooterTable.getFlywheelForDistance(initialDist);
         targetHoodAngle = shooterTable.getLaunchAngleForDistanceAndFlywheel(initialDist, currFlywheelVel);
 
-        if (Math.hypot(ROBOT_GLOBAL_VELOCITY.x, ROBOT_GLOBAL_VELOCITY.y) >= SOTMThreshold && currFlywheelVel >= 300) {
+        if (SOTM && Math.hypot(ROBOT_GLOBAL_VELOCITY.x, ROBOT_GLOBAL_VELOCITY.y) >= SOTMThreshold && currFlywheelVel >= 300) {
             // Launch angle is from horizontal, so the ball's horizontal speed is v*cos.
             double time = initialDist / (currFlywheelVel / 2 * Math.cos(targetHoodAngle));
 

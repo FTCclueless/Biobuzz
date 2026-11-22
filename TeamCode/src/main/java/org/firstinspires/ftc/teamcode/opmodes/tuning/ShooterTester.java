@@ -116,8 +116,8 @@ public class ShooterTester extends LinearOpMode {
             telemetry.addData("DISTANCE to cell (in)", "%.1f", dist);
             telemetry.addData("pose", ROBOT_POSITION);
             telemetry.addData("hood launch (deg)", "%.1f  (servo %.3f)", HOOD_LAUNCH_DEG, hoodServo);
-            //telemetry.addData("turret (deg)", "%.1f / %.1f%s", Math.toDegrees(shooter.turret.getAngle()),
-                    //Math.toDegrees(shooter.turret.getTargetAngle()), shooter.turret.atLimit() ? "  AT LIMIT" : "");
+            telemetry.addData("turret (deg)", "%.1f / %.1f%s", Math.toDegrees(shooter.turret.getAngle()),
+                    Math.toDegrees(shooter.turret.getTargetAngle()), shooter.turret.atLimit() ? "  AT LIMIT" : "");
             telemetry.addData("shots detected", shooter.flywheel.getTotalShots());
             telemetry.addData("battery (V)", "%.2f", battery);
             telemetry.addData("last logged", lastLog);

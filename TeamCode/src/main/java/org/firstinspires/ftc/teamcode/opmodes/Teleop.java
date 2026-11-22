@@ -158,7 +158,7 @@ public class Teleop extends LinearOpMode {
                 flywheelOn = false;
                 atSpeedRumble = false;
                 confirmation = true;
-                // Reference tracking-mode button retained; turret hardware is disabled on master.
+                // Manual flywheel/hood, turret still tracks the hive.
                 robot.shooter.turretTrackInManual = true;
                 robot.shooter.setManual(true);
                 gamepad1.rumble(500);
@@ -300,7 +300,8 @@ public class Teleop extends LinearOpMode {
                     robot.shooter.minFlywheelVelocity, robot.shooter.targetHoodAngle);
             telemetry.addData("flywheelOn (manual)", flywheelOn);
             telemetry.addData("flywheelAtVel", robot.shooter.atVel());
-            telemetry.addData("turret tracking available", false);
+            telemetry.addData("turret (deg)", "%.1f / %.1f%s", Math.toDegrees(robot.shooter.turret.getAngle()),
+                    Math.toDegrees(robot.shooter.turret.getTargetAngle()), robot.shooter.turret.atLimit() ? "  AT LIMIT" : "");
             telemetry.addData("flywheel position", robot.shooter.flywheel.getRawPosition());
             telemetry.addData("flywheel vel", robot.shooter.flywheel.getRawVelocity());
             telemetry.addData("intake state", robot.intake.state);

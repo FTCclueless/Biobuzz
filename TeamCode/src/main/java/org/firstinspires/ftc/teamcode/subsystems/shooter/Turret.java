@@ -21,6 +21,8 @@ public class Turret {
 
     // Servo position that points the turret straight ahead.
     public static double ZERO_POSITION = 0.697;
+    /** Servo travel is 0..MAX_POSITION; the aiming window is computed from the same range. */
+    public static double MAX_POSITION = 0.882;
 
     public static double POSITION_PER_RADIAN = SERVO_TYPE.positionPerRadian;
 
@@ -73,7 +75,7 @@ public class Turret {
         Servo[] s = new Servo[SERVO_NAMES.length];
         for (int i = 0; i < s.length; i++) s[i] = robot.hardwareMap.get(Servo.class, SERVO_NAMES[i]);
 
-        servos = new nPriorityServo(s, "turret", SERVO_TYPE, 0, 0.882, ZERO_POSITION, SERVO_REVERSED, 5, 6);
+        servos = new nPriorityServo(s, "turret", SERVO_TYPE, 0, MAX_POSITION, ZERO_POSITION, SERVO_REVERSED, 5, 6);
         robot.hardwareQueue.addDevice(servos);
         // encoder = ENCODER_PORT.isEmpty() ? null : robot.hardwareMap.tryGet(DcMotorEx.class, ENCODER_PORT);
     }
@@ -159,12 +161,12 @@ public class Turret {
     }
 
     static double lowLimit() {
-        double servoLow = Math.min(servoAngleAt(0), servoAngleAt(1));
+        double servoLow = Math.min(servoAngleAt(0), servoAngleAt(MAX_POSITION));
         return Math.max(MIN_ANGLE, servoLow) + LIMIT_MARGIN;
     }
 
     static double highLimit() {
-        double servoHigh = Math.max(servoAngleAt(0), servoAngleAt(1));
+        double servoHigh = Math.max(servoAngleAt(0), servoAngleAt(MAX_POSITION));
         return Math.min(MAX_ANGLE, servoHigh) - LIMIT_MARGIN;
     }
 

@@ -17,6 +17,7 @@ public class TurretAngleTest {
         Turret.LIMIT_MARGIN = r(5);
         Turret.ZERO_POSITION = 0.5;
         Turret.POSITION_PER_RADIAN = 0.001;
+        Turret.MAX_POSITION = 1.0;
     }
 
     @Test public void servoTravelTightensTheWindow() {
@@ -48,6 +49,16 @@ public class TurretAngleTest {
         assertEquals(r(-85), Turret.lowLimit(), EPS);
         assertEquals(r(83.872), Turret.highLimit(), EPS);
         assertEquals(r(83.872), Turret.chooseReachable(r(90), 0), EPS);
+    }
+
+    @Test public void robotServoRangeLimitsTheWindow() {
+        Turret.MIN_ANGLE = r(-180);
+        Turret.MAX_ANGLE = r(90);
+        Turret.ZERO_POSITION = 0.697;
+        Turret.MAX_POSITION = 0.882;
+        Turret.POSITION_PER_RADIAN = 1.0 / r(322);
+        assertEquals(r(-175), Turret.lowLimit(), 1e-6);                     // MIN_ANGLE + margin binds
+        assertEquals(r((0.882 - 0.697) * 322 - 5), Turret.highLimit(), 1e-6); // servo end (59.6 deg) binds
     }
 
     @Test public void plainAngleInRange() {
