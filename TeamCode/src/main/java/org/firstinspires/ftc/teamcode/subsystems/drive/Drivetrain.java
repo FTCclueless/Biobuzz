@@ -4,6 +4,7 @@ import static org.firstinspires.ftc.teamcode.utils.Globals.DRIVETRAIN_ENABLED;
 import static org.firstinspires.ftc.teamcode.utils.Globals.ROBOT_POSITION;
 
 import com.acmerobotics.dashboard.canvas.Canvas;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.acmerobotics.dashboard.config.Config;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.math.Pose;
@@ -36,10 +37,13 @@ public class Drivetrain {
     private double[][] pathDrawPoints;
     private Pose2d lastGlobalVelocity = null;
     private boolean wasLocking = false;
+    /** Same device the localizer bulk-reads each loop; status and rate below are cached from that read. */
+    private final GoBildaPinpointDriver pinpoint;
 
     public Drivetrain(Robot robot) {
         this.robot = robot;
         follower = Constants.create(robot.hardwareMap, robot.hardwareQueue, robot.sensors);
+        pinpoint = robot.hardwareMap.get(GoBildaPinpointDriver.class, Constants.pinpointConfig.name.get());
     }
 
     public void update() {
@@ -132,6 +136,8 @@ public class Drivetrain {
         TelemetryUtil.packet.put("Pinpoint X (in)", pose.x());
         TelemetryUtil.packet.put("Pinpoint Y (in)", pose.y());
         TelemetryUtil.packet.put("Pinpoint Heading (deg)", Math.toDegrees(pose.heading()));
+        TelemetryUtil.packet.put("Pinpoint status", pinpoint.getDeviceStatus().toString()); // READY when healthy
+        TelemetryUtil.packet.put("Pinpoint rate (Hz)", pinpoint.getFrequency());
         // Draw the measured pose every loop, including manual driving and init.
         DashboardUtil.drawRobot(TelemetryUtil.packet.fieldOverlay(),
                 new Pose2d(pose.x(), pose.y(), pose.heading()), "#00C853");

@@ -15,8 +15,12 @@ public class ShotTable2 {
                 .addValue(420, Math.toRadians(55))
         );
 
-        table.put( 40.0, new ShotPoint(450)
-            .addValue(420, Math.toRadians(55))
+        table.put( 40.0, new ShotPoint(440)
+            .addValue(440, Math.toRadians(55))
+        );
+
+        table.put( 50.0, new ShotPoint(460)
+            .addValue(460, Math.toRadians(55))
         );
 
 
