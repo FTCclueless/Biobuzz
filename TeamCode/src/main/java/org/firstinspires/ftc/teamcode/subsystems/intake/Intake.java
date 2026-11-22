@@ -57,6 +57,8 @@ public class Intake {
     public static double backPivotDownPos = 0.2;
 
     public static double rollerIntakePower = 1;
+    /** Roller power for teleop's intake-only LB stage. */
+    public static double rollerSlowIntakePower = 0.3;
     public static double rollerFeedPower = 1;
     public static double transferIntakePower = 1; // placeholder
     public static double transferFeedPower = 1;
@@ -96,6 +98,8 @@ public class Intake {
     public boolean nudgeTransfer = false;
     /** INTAKE also runs the transfer forward (teleop's first LB stage). Off = rollers only. */
     public boolean transferOnIntake = false;
+    /** INTAKE runs the rollers at rollerSlowIntakePower instead of rollerIntakePower. */
+    public boolean slowIntake = false;
     private int lastDirection = 0;
 
     private long rejectStart = -1;
@@ -202,7 +206,7 @@ public class Intake {
             return 0;
         }*/
         pivotDown(true);
-        intakeMotor.setTargetPower(rollerIntakePower * (reversed ? -1 : 1));
+        intakeMotor.setTargetPower((slowIntake ? rollerSlowIntakePower : rollerIntakePower) * (reversed ? -1 : 1));
         transferMotor.setTargetPower(reversed ? -transferIntakePower : transferOnIntake ? transferIntakePower : 0);
 
         return reversed ? -1 : 1;

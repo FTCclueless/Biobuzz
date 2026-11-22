@@ -105,18 +105,14 @@ public class Teleop extends LinearOpMode {
             robot.drivetrain.drive(gamepad1);
 
             // INTAKE: same gamepad1 controls as the reference Teleop.
-            // LB cycles: intake + transfer -> intake only -> off. The stage is read from the intake itself,
-            // so a shot, outtake or reverse that changed it starts the cycle over from the top.
+            // LB flips between intake + transfer (full speed) and intake only (slower, no transfer). No off
+            // stage: X (outtake) or a shot stops it. Not intaking forward (off, shot, outtake, reverse) starts at the first.
             if (lb1.isClicked(gamepad1.left_bumper)) {
                 boolean intakingForward = robot.intake.state == Intake.State.INTAKE && !intakeReversed;
-                if (!intakingForward) {
-                    robot.intake.transferOnIntake = true;
-                    robot.intake.reqIntake(true);
-                } else if (robot.intake.transferOnIntake) {
-                    robot.intake.transferOnIntake = false;
-                } else {
-                    robot.intake.reqOff(true);
-                }
+                boolean withTransfer = !intakingForward || !robot.intake.transferOnIntake;
+                robot.intake.transferOnIntake = withTransfer;
+                robot.intake.slowIntake = !withTransfer;
+                robot.intake.reqIntake(true);
                 intakeReversed = false;
                 robot.intake.setRollerDirection(intakeReversed);
             }
@@ -124,6 +120,7 @@ public class Teleop extends LinearOpMode {
             if (a1.isClicked(gamepad1.a && !gamepad1.start)) {
                 intakeReversed = robot.intake.state == Intake.State.IDLE || !intakeReversed;
                 robot.intake.transferOnIntake = false;
+                robot.intake.slowIntake = false;
                 robot.intake.reqIntake(true);
                 robot.intake.setRollerDirection(intakeReversed);
             }
