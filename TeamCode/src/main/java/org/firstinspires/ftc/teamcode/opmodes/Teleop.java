@@ -50,6 +50,7 @@ public class Teleop extends LinearOpMode {
         ButtonToggle b1 = new ButtonToggle();
         ButtonToggle y1 = new ButtonToggle();
         ButtonToggle x1 = new ButtonToggle();
+        ButtonToggle outtake1 = new ButtonToggle();
         ButtonToggle lt1 = new ButtonToggle();
         ButtonToggle lt2 = new ButtonToggle();
         ButtonToggle rt1 = new ButtonToggle();
@@ -95,7 +96,7 @@ public class Teleop extends LinearOpMode {
             robot.drivetrain.drive(gamepad1);
 
             // INTAKE: same gamepad1 controls as the reference Teleop.
-            if (lb1.isClicked(gamepad1.left_bumper)) {
+            if (lb1.isClicked(gamepad1.right_trigger > triggerThresh)) { // right trigger: intake on/off
                 if (robot.intake.state == Intake.State.IDLE) robot.intake.reqIntake(true);
                 else robot.intake.reqOff(true);
                 intakeReversed = false;
@@ -108,8 +109,8 @@ public class Teleop extends LinearOpMode {
                 robot.intake.setRollerDirection(intakeReversed);
             }
 
-            // Hold the left trigger to creep balls up the transfer; tap repeatedly to jiggle a stuck one.
-            robot.intake.nudgeTransfer = gamepad1.left_trigger > triggerThresh;
+            // Hold the left bumper to creep balls up the transfer; tap repeatedly to jiggle a stuck one.
+            robot.intake.nudgeTransfer = gamepad1.left_bumper;
 
             if (flowerToggle.isClicked(gamepad1.dpad_down)) {
                 robot.intake.toggleFlower();
@@ -175,13 +176,13 @@ public class Teleop extends LinearOpMode {
             boolean shootReleased = rb1.isReleased(gamepad1.right_bumper);
             boolean closeClicked = b1.isClicked(gamepad1.b);
             boolean midClicked = y1.isClicked(gamepad1.y);
-            boolean farClicked = x1.isClicked(gamepad1.x);
-            boolean pivotSwapClicked = lt1.isClicked(gamepad1.right_stick_button); // left trigger is the transfer nudge
+            boolean farClicked = x1.isClicked(gamepad1.dpad_right); // X is hold-to-outtake
+            boolean pivotSwapClicked = lt1.isClicked(gamepad1.right_stick_button);
             boolean secondLeftTriggerClicked = lt2.isClicked(gamepad2.left_trigger > triggerThresh);
-            boolean rightTriggerClicked = rt1.isClicked(gamepad1.right_trigger > triggerThresh);
+            boolean stopShooterClicked = rt1.isClicked(gamepad1.left_trigger > triggerThresh); // left trigger: flywheel off / stop aiming
             boolean closeHeld = b1.isHeld(gamepad1.b, 500);
             boolean midHeld = y1.isHeld(gamepad1.y, 500);
-            boolean farHeld = x1.isHeld(gamepad1.x, 500);
+            boolean farHeld = x1.isHeld(gamepad1.dpad_right, 500);
             Shooter.forceUpdateVelBool = false;
 
             // Fixed-shot preset, from either mode. Shoot with right bumper as in manual; press again for off.
@@ -208,7 +209,7 @@ public class Teleop extends LinearOpMode {
 
             if (robot.shooter.state == Shooter.State.TEST) {
 
-                if (rightTriggerClicked || closeHeld
+                if (stopShooterClicked || closeHeld
                         || midHeld
                         || farHeld) { // Off
                     flywheelOn = false;
@@ -284,7 +285,7 @@ public class Teleop extends LinearOpMode {
                     confirmation = true;
                 }
 
-                if (rightTriggerClicked) {
+                if (stopShooterClicked) {
                     robot.shooter.reqStop(true);
                 }
             }
@@ -294,6 +295,12 @@ public class Teleop extends LinearOpMode {
                 robot.intake.overridePivotSide = true;
                 robot.intake.pivotSideFront = !robot.intake.pivotSideFront;
             }
+
+            // Hold X to outtake (rollers and transfer reversed); release stops the intake.
+            // Last before update, so it wins over a shot or intake command this loop.
+            boolean outtakeReleased = outtake1.isReleased(gamepad1.x);
+            if (gamepad1.x) robot.intake.eject();
+            else if (outtakeReleased) robot.intake.stop();
 
             robot.update();
 
