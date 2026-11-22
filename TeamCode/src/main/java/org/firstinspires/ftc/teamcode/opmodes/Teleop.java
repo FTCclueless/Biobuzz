@@ -23,7 +23,7 @@ import java.util.Locale;
 @Config
 @TeleOp(name = "Teleop Main")
 public class Teleop extends LinearOpMode {
-    /** gamepad1 dpad up toggles this fixed shot. Launch angle in degrees, like ShotTable2. */
+    /** gamepad1 dpad left toggles this fixed shot. Launch angle in degrees, like ShotTable2. */
     public static double PRESET_FLYWHEEL = 400;
     public static double PRESET_LAUNCH_DEG = 50;
 
@@ -107,6 +107,9 @@ public class Teleop extends LinearOpMode {
                 robot.intake.setRollerDirection(intakeReversed);
             }
 
+            // Hold to creep balls up the transfer; tap repeatedly to jiggle a stuck one.
+            robot.intake.nudgeTransfer = gamepad1.dpad_up;
+
             if (flowerToggle.isClicked(gamepad1.dpad_down)) {
                 robot.intake.toggleFlower();
             }
@@ -176,7 +179,7 @@ public class Teleop extends LinearOpMode {
             Shooter.forceUpdateVelBool = false;
 
             // Fixed-shot preset, from either mode. Shoot with right bumper as in manual; press again for off.
-            if (up1.isClicked(gamepad1.dpad_up)) {
+            if (up1.isClicked(gamepad1.dpad_left)) { // dpad up is the transfer nudge
                 boolean presetOn = robot.shooter.state == Shooter.State.TEST
                         && robot.shooter.flywheel.getTargetVelocity() == PRESET_FLYWHEEL;
                 if (presetOn) {

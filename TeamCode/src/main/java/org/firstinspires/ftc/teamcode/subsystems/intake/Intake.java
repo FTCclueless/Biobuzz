@@ -60,6 +60,8 @@ public class Intake {
     public static double rollerFeedPower = 1;
     public static double transferIntakePower = 1; // placeholder
     public static double transferFeedPower = 1;
+    /** Transfer power while the driver holds the nudge button: low enough not to jam balls into the closed blocker. */
+    public static double transferNudgePower = 0.4;
     // Provisional normalized positions. Tune on the assembled mechanism.
     public static double flowerMechUpPosition = 0.15;
     public static double flowerMechDownPosition = 0.945;
@@ -90,6 +92,8 @@ public class Intake {
     public boolean overridePivotSide = true;
     public boolean pivotSideFront = true;
     private boolean reversed = false;
+    /** Teleop sets this each loop while the nudge button is held; only acts when the transfer would otherwise be off. */
+    public boolean nudgeTransfer = false;
     private int lastDirection = 0;
 
     private long rejectStart = -1;
@@ -171,6 +175,10 @@ public class Intake {
                 //carriedCount = counter.count();
                 updateTelemetry();
                 return;
+        }
+
+        if (nudgeTransfer && (state == State.IDLE || (state == State.INTAKE && !reversed && !rejecting()))) {
+            transferMotor.setTargetPower(transferNudgePower);
         }
 
         lastDirection = direction;
