@@ -67,7 +67,8 @@ public class BlueAuto extends LinearOpMode {
 
         shoot(test, false); // fire preloads
         if (CHASE_CLUSTERS && robot.balls != null) new ClusterChaser(robot).run(CHASE_MAX_CLUSTERS, CHASE_BUDGET_MS);
-        robot.intake.startPollenRetrieval();
+        robot.intake.intake();
+        robot.intake.toggleFlower();
         // From wherever the chase left us, not from the start pose.
         Pose2d here = Globals.ROBOT_POSITION;
         follow(line(new Pose(here.x, here.y), new Pose(-SIZE/2+24, 0).plus(startPose)).constant(0));

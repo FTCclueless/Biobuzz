@@ -3,8 +3,6 @@ package org.firstinspires.ftc.teamcode.subsystems.intake;
 import android.graphics.Color;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
@@ -16,10 +14,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Robot;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.LogUtil;
-import org.firstinspires.ftc.teamcode.utils.PID;
 import org.firstinspires.ftc.teamcode.utils.RunMode;
 import org.firstinspires.ftc.teamcode.utils.TelemetryUtil;
-import org.firstinspires.ftc.teamcode.utils.priority.PriorityCRServo;
 import org.firstinspires.ftc.teamcode.utils.priority.PriorityMotor;
 import org.firstinspires.ftc.teamcode.utils.priority.nPriorityServo;
 
@@ -31,7 +27,6 @@ public class Intake {
     public static final String PIVOT_BACK = "intakePivotBack";
 
     public static final String FLOWER_SERVO = "flowerMechanism";
-    public static final String FLOWER_ENCODER = "intakeFlowerMechEncoder";
     public static final String LEFT_SENSOR = "leftEntranceSensor";
     public static final String RIGHT_SENSOR = "rightEntranceSensor";
 
@@ -42,9 +37,6 @@ public class Intake {
         INTAKE,
         FEED,
         EJECT,
-        POLLEN_RETRIEVAL_START,
-        POLLEN_RETRIEVAL_INTAKE,
-        POLLEN_RETRIEVAL_END,
         TEST
     }
 
@@ -58,25 +50,19 @@ public class Intake {
 
     public static double REJECT_POWER = 1.0;
 
-    public static double intakePivotUpPosition = 0.8;
-    public static double intakePivotDownPosition = 0.25;
+    public static double intakePivotUpPosition = 0.6;
+    public static double intakePivotDownPosition = 0.4;
 
     public static double backPivotUpPos = 0.7;
-    public static double backPivotDownPos = 0.1;
+    public static double backPivotDownPos = 0.2;
 
     public static double rollerIntakePower = 1;
     public static double rollerFeedPower = 1;
     public static double transferIntakePower = 1; // placeholder
     public static double transferFeedPower = 1;
-    public static double flowerMechDownPosition = 4.5;
-    public static double flowerMechUpPosition = 0.0;
-    public static double flowerMechEncoderMaxVoltage = 3.3;
-    public static double flowerMechPositionThreshold = 0.1;
-    public static PID flowerMechPID = new PID(1, 0, 0);
-    /** A flower move that hasn't arrived by now stops anyway: P-only near the target can stall in the servo deadband. */
-    public static long flowerMechTimeoutMs = 2500;
-    public static long FLOWER_MECH_TIME_UP = 1100;
-    public static long FLOWER_MECH_TIME_DOWN = 1000;
+    // Provisional normalized positions. Tune on the assembled mechanism.
+    public static double flowerMechUpPosition = 0.15;
+    public static double flowerMechDownPosition = 0.945;
 
     public static double PRESENT_CM = 4.0;
     public static boolean BEAM_ACTIVE_LOW = true;
@@ -95,9 +81,8 @@ public class Intake {
 
     private final Robot robot;
     public final PriorityMotor intakeMotor, transferMotor;
-    public final PriorityCRServo flowerMechanismServo;
+    private final nPriorityServo flowerMechanismServo;
     public final nPriorityServo frontPivot, backPivot;
-    private final AnalogInput flowerEncoder;
     private final EntranceSensor[] sensors = new EntranceSensor[2];
     //private final BallCounter counter;
 
@@ -111,9 +96,7 @@ public class Intake {
     private String rejectReason = "";
     private Side rejectSide = null;
 
-    private double flowerAngle = 0;
-    private double lastFlowerRaw = 0;
-    private long flowerMoveStart = 0;
+    private boolean flowerDown;
 
     public Intake(Robot robot) {
         this.robot = robot;
@@ -126,9 +109,10 @@ public class Intake {
                 new DcMotorEx[]{robot.hardwareMap.get(DcMotorEx.class, TRANSFER_MOTOR)},
                 "transfer", 2, 4, new double[]{1}, robot.sensors);
 
-        flowerMechanismServo = new PriorityCRServo(
-                new CRServo[]{robot.hardwareMap.get(CRServo.class, FLOWER_SERVO)},
-                "flowerMechanism", PriorityCRServo.ServoType.AXON_MINI, new boolean[]{false}, 6, 7);
+        flowerMechanismServo = new nPriorityServo(
+                new Servo[]{robot.hardwareMap.get(Servo.class, FLOWER_SERVO)},
+                FLOWER_SERVO, nPriorityServo.ServoType.AXON_MINI_EXTENDED,
+                0, 1, flowerMechUpPosition, new boolean[]{false}, 6, 7);
 
         frontPivot = new nPriorityServo(new Servo[]{robot.hardwareMap.get(Servo.class, PIVOT_FRONT)},
                 "intakePivotFront", nPriorityServo.ServoType.AXON_MINI, 0,
@@ -138,9 +122,6 @@ public class Intake {
                 1, backPivotUpPos, new boolean[]{false}, 6, 7);
 
         robot.hardwareQueue.addDevices(intakeMotor, flowerMechanismServo, backPivot, frontPivot, transferMotor);
-
-        flowerEncoder = robot.hardwareMap.get(AnalogInput.class, FLOWER_ENCODER);
-        resetFlowerAngle();
 
         sensors[Side.LEFT.ordinal()] = new EntranceSensor(robot, LEFT_SENSOR);
         sensors[Side.RIGHT.ordinal()] = new EntranceSensor(robot, RIGHT_SENSOR);
@@ -158,9 +139,9 @@ public class Intake {
             es.read();
             //counter.update(s.ordinal(), es.present, lastDirection, now);
         }
-        readFlower();
-
-        boolean intaking = state == State.INTAKE || state == State.POLLEN_RETRIEVAL_INTAKE;
+        boolean intaking = state == State.INTAKE;
+        if (!intaking) flowerDown = false;
+        flowerMechanismServo.setTargetPos(flowerDown ? flowerMechDownPosition : flowerMechUpPosition);
         checkRejects(now, intaking);
 
         int direction = 0;
@@ -168,42 +149,22 @@ public class Intake {
             case IDLE:
                 intakeMotor.setTargetPower(0);
                 transferMotor.setTargetPower(0);
-                flowerMechanismServo.setTargetPower(0);
                 pivotDown(false);
                 break;
             case INTAKE:
-                flowerMechanismServo.setTargetPower(0); // the other states own the flower too, or it keeps its last PID power
                 direction = runIntake();
                 break;
             case FEED:
-                flowerMechanismServo.setTargetPower(0);
                 intakeMotor.setTargetPower(rollerFeedPower);
                 transferMotor.setTargetPower(transferFeedPower);
                 pivotDown(true);
                 break;
             case EJECT:
-                flowerMechanismServo.setTargetPower(0);
                 intakeMotor.setTargetPower(-EJECT_POWER);
                 transferMotor.setTargetPower(-EJECT_POWER);
 
                 pivotDown(true);
                 direction = -1;
-                break;
-            case POLLEN_RETRIEVAL_START:
-                intakeMotor.setTargetPower(0);
-                transferMotor.setTargetPower(0);
-                pivotDown(false);
-                if (driveFlowerTo(flowerMechDownPosition)) state = State.POLLEN_RETRIEVAL_INTAKE;
-                break;
-            case POLLEN_RETRIEVAL_INTAKE:
-                flowerMechanismServo.setTargetPower(0);
-                direction = runIntake();
-                break;
-            case POLLEN_RETRIEVAL_END:
-                intakeMotor.setTargetPower(0);
-                transferMotor.setTargetPower(0);
-                pivotDown(false);
-                if (driveFlowerTo(flowerMechUpPosition)) state = State.IDLE;
                 break;
             case TEST:
                 lastDirection = (int) Math.signum(intakeMotor.getPower());
@@ -294,56 +255,22 @@ public class Intake {
         return (Globals.isRed && c == BallColor.BLUE) || (!Globals.isRed && c == BallColor.RED);
     }
 
-    private double flowerRaw() {
-        return flowerEncoder.getVoltage() / flowerMechEncoderMaxVoltage * 2 * Math.PI;
+    public void intake() {
+        if (state != State.INTAKE) flowerDown = false;
+        state = State.INTAKE;
     }
-
-    private void readFlower() {
-        double raw = flowerRaw();
-        double d = raw - lastFlowerRaw;
-        flowerAngle += Math.atan2(Math.sin(d), Math.cos(d));
-        lastFlowerRaw = raw;
-    }
-
-    private boolean driveFlowerTo(double target) {
-        double err = target - flowerAngle;
-        long timeout = (target == flowerMechUpPosition) ? FLOWER_MECH_TIME_UP : FLOWER_MECH_TIME_DOWN;
-        boolean late = System.currentTimeMillis() - flowerMoveStart >= timeout;
-        if (Math.abs(err) < flowerMechPositionThreshold || late) {
-            flowerMechanismServo.setTargetPower(0);
-            return true;
-        }
-        flowerMechanismServo.setTargetPower(flowerMechPID.update(err, -1.0, 1.0));
-        return false;
-    }
-
-    public void intake() { state = State.INTAKE; }
 
     public void feed() { state = State.FEED; }
 
     public void eject() { state = State.EJECT; }
 
-    public void stop() {
-        if (state == State.POLLEN_RETRIEVAL_START || state == State.POLLEN_RETRIEVAL_INTAKE) {
-            flowerMoveStart = System.currentTimeMillis();
-            state = State.POLLEN_RETRIEVAL_END;
-        } else if (state != State.POLLEN_RETRIEVAL_END) {
-            state = State.IDLE;
-        }
+    public void stop() { state = State.IDLE; }
+
+    public void toggleFlower() {
+        if (state == State.INTAKE) flowerDown = !flowerDown;
     }
 
-    public void startPollenRetrieval() {
-        resetFlowerAngle();
-        flowerMoveStart = System.currentTimeMillis();
-        state = State.POLLEN_RETRIEVAL_START;
-    }
-
-    /** Assumes the flower is stowed: take the reading nearest flowerMechUpPosition across the 0/2pi wrap. */
-    private void resetFlowerAngle() {
-        lastFlowerRaw = flowerRaw();
-        double d = lastFlowerRaw - flowerMechUpPosition;
-        flowerAngle = flowerMechUpPosition + Math.atan2(Math.sin(d), Math.cos(d));
-    }
+    public boolean isFlowerDown() { return state == State.INTAKE && flowerDown; }
 
     /*public int getBallCount() { return counter.count(); }
 
@@ -363,11 +290,7 @@ public class Intake {
 
     public boolean hasColorSensor(Side s) { return sensors[s.ordinal()].colorSensor != null; }
 
-    public double getFlowerAngle() { return flowerAngle; }
-
     public void reqIntake(boolean req) { if (req) intake(); }
-
-    public void reqPollenRetrieval(boolean req) { if (req) startPollenRetrieval(); }
 
     public void reqShoot(boolean req) { if (req) feed(); }
 
@@ -381,7 +304,7 @@ public class Intake {
         //TelemetryUtil.packet.put("Intake : full", isFull());
         TelemetryUtil.packet.put("Intake : rejecting", rejecting() ? rejectReason : "no");
         TelemetryUtil.packet.put("Intake : reversed", reversed);
-        TelemetryUtil.packet.put("Intake : flower angle (rad)", flowerAngle);
+        TelemetryUtil.packet.put("Intake : flower target", flowerMechanismServo.getTargetPos());
         LogUtil.intakeState.set(state.toString());
         LogUtil.intakeReversed.set(reversed);
     }

@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.teamcode.Robot;
 import org.firstinspires.ftc.teamcode.field.BiobuzzField;
 import org.firstinspires.ftc.teamcode.subsystems.shooter.Shooter;
+import org.firstinspires.ftc.teamcode.utils.ButtonToggle;
 import org.firstinspires.ftc.teamcode.utils.Globals;
 import org.firstinspires.ftc.teamcode.utils.Pose2d;
 import org.firstinspires.ftc.teamcode.utils.RunMode;
@@ -53,6 +54,8 @@ public class ShooterTester extends LinearOpMode {
         }
         Shooter shooter = robot.shooter;
         shooter.setManual(true);
+        ButtonToggle blockerPulse = new ButtonToggle();
+        ButtonToggle intakeSideToggle = new ButtonToggle();
 
         while (opModeInInit()) {
             robot.drivetrain.setPoseEstimate(startPose());
@@ -62,7 +65,9 @@ public class ShooterTester extends LinearOpMode {
             telemetry.addLine("Place it at START_X / START_Y / START_HEADING_DEG (field center = 0, 0).");
             telemetry.addLine("After START, flywheel follows Dashboard FLYWHEEL_VELOCITY (0 stops).");
             telemetry.addLine("Dashboard RED_HIVE selects alliance. CELL_SIDE: -1 = -X, 0 = nearest, 1 = +X.");
-            telemetry.addLine("Hold RT: open blocker + feed   X: reset pose to start");
+            telemetry.addLine("Gamepad 2 X: toggle blocker for 1 second");
+            telemetry.addLine("Gamepad 1 LT: switch intake side");
+            telemetry.addLine("Hold RT: feed   Hold RB: open blocker   X: reset pose to start");
             telemetry.addLine("dpad up: log MADE   dpad down: log MISSED (Logcat tag ShotLog)");
             telemetry.addData("start pose", startPose());
             telemetry.update();
@@ -72,20 +77,28 @@ public class ShooterTester extends LinearOpMode {
         String lastLog = "";
         while (opModeIsActive()) {
             if (gamepad1.x) robot.drivetrain.setPoseEstimate(startPose());
-            boolean firing = gamepad1.right_trigger > 0.5;
+            boolean feeding = FEED || gamepad1.right_trigger > 0.5;
+            boolean openBlocker = gamepad1.right_bumper;
 
             boolean redHive = RED_HIVE;
             Vector3 cell = selectedCell(redHive, CELL_SIDE);
             shooter.targetOverride = cell;
             shooter.turretTrackInManual = TRACK_HIVE;
-            //if (!TRACK_HIVE) shooter.turret.setTargetAngle(Math.toRadians(TURRET_DEG));
+            if (!TRACK_HIVE) shooter.turret.setTargetAngle(Math.toRadians(TURRET_DEG));
 
             double hoodServo = Utils.minMaxClip(
                     (Math.toRadians(HOOD_LAUNCH_DEG) - Shooter.hoodSweep) * Shooter.hoodGearRatio, 0, 1.6);
             shooter.flywheel.setTargetVelocity(FLYWHEEL_VELOCITY);
             shooter.setHoodAngle(hoodServo);
-            shooter.setShooterBlocker(!(firing));
-            if (FEED || firing) robot.intake.feed(); else robot.intake.stop();
+            shooter.setShooterBlocker(!openBlocker);
+            if (blockerPulse.isClicked(gamepad2.x)) {
+                shooter.pulseShooterBlocker();
+            }
+            if (intakeSideToggle.isClicked(gamepad1.left_trigger > 0.2)) {
+                robot.intake.overridePivotSide = true;
+                robot.intake.pivotSideFront = !robot.intake.pivotSideFront;
+            }
+            if (feeding) robot.intake.feed(); else robot.intake.stop();
             if (DRIVE) robot.drivetrain.drive(gamepad1);
 
             robot.update();
@@ -108,7 +121,9 @@ public class ShooterTester extends LinearOpMode {
             telemetry.addData("shots detected", shooter.flywheel.getTotalShots());
             telemetry.addData("battery (V)", "%.2f", battery);
             telemetry.addData("last logged", lastLog);
-            telemetry.addData("firing", firing);
+            telemetry.addData("intake side", robot.intake.pivotSideFront ? "front" : "back");
+            telemetry.addData("feeding", feeding);
+            telemetry.addData("blocker (RB request)", openBlocker ? "open" : "closed");
             telemetry.update();
         }
     }

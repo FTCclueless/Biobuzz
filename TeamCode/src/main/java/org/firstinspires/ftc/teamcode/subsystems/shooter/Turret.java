@@ -20,7 +20,7 @@ public class Turret {
     // public static final String ENCODER_PORT = "rightFront";
 
     // Servo position that points the turret straight ahead.
-    public static double ZERO_POSITION = 0.694;
+    public static double ZERO_POSITION = 0.711;
 
     public static double POSITION_PER_RADIAN = SERVO_TYPE.positionPerRadian;
 

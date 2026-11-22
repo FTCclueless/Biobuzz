@@ -51,6 +51,7 @@ public class Teleop extends LinearOpMode {
         ButtonToggle rt1 = new ButtonToggle();
         ButtonToggle back1 = new ButtonToggle();
         ButtonToggle up1 = new ButtonToggle();
+        ButtonToggle flowerToggle = new ButtonToggle();
 
         ButtonToggle a2 = new ButtonToggle();
         ButtonToggle b2 = new ButtonToggle();
@@ -105,7 +106,14 @@ public class Teleop extends LinearOpMode {
                 robot.intake.setRollerDirection(intakeReversed);
             }
 
+            if (flowerToggle.isClicked(gamepad1.dpad_down)) {
+                robot.intake.toggleFlower();
+            }
+
             // SHOOTER
+            if (x2.isClicked(gamepad2.x)) {
+                robot.shooter.pulseShooterBlocker();
+            }
 
             if (a2.isClicked(gamepad2.a)) {
                 robot.intake.reqOff(true);

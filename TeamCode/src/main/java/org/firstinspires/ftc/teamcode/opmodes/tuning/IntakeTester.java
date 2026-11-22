@@ -14,7 +14,6 @@ import org.firstinspires.ftc.teamcode.utils.RunMode;
 public class IntakeTester extends LinearOpMode {
     public static double MOTOR_POWER = 0;
     public static double TRANSFER_POWER = 0;
-    public static double FLOWER_POWER = 0;
     public static boolean DRIVE = true;
 
     @Override
@@ -49,7 +48,6 @@ public class IntakeTester extends LinearOpMode {
             }
 
             //intake.pivot.setTargetAngle(pivot);
-            intake.flowerMechanismServo.setTargetPower(FLOWER_POWER);
             if (DRIVE) robot.drivetrain.drive(gamepad1);
 
             robot.update();
@@ -59,7 +57,6 @@ public class IntakeTester extends LinearOpMode {
 
             /*telemetry.addData("pivot angle", "%.3f  (up %.3f, down %.3f)", pivot,
                     Intake.intakePivotUpPosition, Intake.intakePivotDownPosition);*/
-            telemetry.addData("flower power / angle (rad)", "%.2f / %.2f", FLOWER_POWER, intake.getFlowerAngle());
             //telemetry.addData("balls held", intake.getBallCount());
             for (Intake.Side s : Intake.Side.values()) {
                 telemetry.addData(s + " sensor", "%s  %.2f cm  %s", intake.isBallPresent(s) ? "BALL" : "----",

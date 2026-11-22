@@ -41,7 +41,11 @@ public class Shooter {
     public static double hoodSweep = Math.toRadians(26.43);
     public static double hoodGearRatio = 192.0 / 35.0;
 
-    public static double latchBlockPos = 0.542, latchOpenPos = 0.121;
+    private boolean blockerClosed = true;
+    private boolean pulseBlockerClosed;
+    private long blockerPulseUntilNanos;
+
+    public static double latchBlockPos = 0.43, latchOpenPos = 0.121;
 
     public Vector3 ballTarget;
     public Vector3 targetOverride = null;
@@ -89,6 +93,7 @@ public class Shooter {
     }
 
     public void update() {
+        updateBlockerPulse();
         switch (state) {
             case IDLE: {
                 stopRequest = false;
@@ -116,7 +121,7 @@ public class Shooter {
                 TelemetryUtil.packet.put("Aim: hood.inPosition", hood.inPosition());
                 TelemetryUtil.packet.put("Aim: atVel", atVel());
                 // An empty or out-of-range shot table gives 0 in/s, which would count as "at speed".
-                if (turretResult &&  this.atVel() && hood.inPosition() && minFlywheelVelocity > 0) {
+                if (/*turretResult &&*/  this.atVel() /*&& hood.inPosition() && minFlywheelVelocity > 0*/) {
                     state = State.READY;
                 }
                 flywheel.setTargetVelocity(forceUpdateVelBool ? forceUpdateVel : minFlywheelVelocity);
@@ -144,7 +149,7 @@ public class Shooter {
 
                 if (shootRequest /* && (isRobotInZone(0,0,-72,72,-72,-72) || isRobotInZone(48,0,72,24,72,-24)) */) {
                     setShooterBlocker(false);
-                    if (flywheelBlocker.inPosition()) {
+                    if (blockerPulseUntilNanos == 0 && flywheelBlocker.inPosition()) {
                         state = State.SHOOT;
                         robot.intake.reqShoot(true);
                     }
@@ -152,7 +157,7 @@ public class Shooter {
 
                 if (autoShootIfInZone && isRobotInZone() && Math.hypot(ROBOT_GLOBAL_VELOCITY.x, ROBOT_GLOBAL_VELOCITY.y) < SOTMThreshold) {
                     setShooterBlocker(false);
-                    if (flywheelBlocker.inPosition()) {
+                    if (blockerPulseUntilNanos == 0 && flywheelBlocker.inPosition()) {
                         state = State.SHOOT;
                         robot.intake.reqShoot(true);
                     }
@@ -216,6 +221,7 @@ public class Shooter {
             }
         }
 
+        updateBlockerPulse();
         flywheel.update();
         turret.update();
 
@@ -258,7 +264,35 @@ public class Shooter {
 
 
 
-    public void setShooterBlocker(boolean active) { flywheelBlocker.setTargetPos(active ? latchBlockPos : latchOpenPos);}
+    public void setShooterBlocker(boolean closed) {
+        blockerClosed = closed;
+        applyBlockerPosition();
+    }
+
+    public void pulseShooterBlocker() {
+        if (!canPulseBlocker() || blockerPulseUntilNanos != 0) return;
+        pulseBlockerClosed = !blockerClosed;
+        blockerPulseUntilNanos = System.nanoTime() + 1_000_000_000L;
+        applyBlockerPosition();
+    }
+
+    private boolean canPulseBlocker() {
+        return state == State.AIMING || state == State.READY || state == State.SHOOT
+                || (state == State.TEST && Globals.RUNMODE == RunMode.TESTER);
+    }
+
+    private void updateBlockerPulse() {
+        if (blockerPulseUntilNanos != 0
+                && (!canPulseBlocker() || System.nanoTime() - blockerPulseUntilNanos >= 0)) {
+            blockerPulseUntilNanos = 0;
+            applyBlockerPosition();
+        }
+    }
+
+    private void applyBlockerPosition() {
+        boolean closed = blockerPulseUntilNanos != 0 ? pulseBlockerClosed : blockerClosed;
+        flywheelBlocker.setTargetPos(closed ? latchBlockPos : latchOpenPos);
+    }
 
     public void updateBallTarget() {
         ballTarget = targetOverride != null ? targetOverride

@@ -11,8 +11,11 @@ public class ShotTable2 {
 
     public ShotTable2() {
         // TODO Find new values. These are placeholders.
+        table.put( 32.77, new ShotPoint(420)
+                .addValue(420, Math.toRadians(55))
+        );
 
-        table.put( 46.0, new ShotPoint(420)
+        table.put( 40.0, new ShotPoint(450)
             .addValue(420, Math.toRadians(55))
         );
 

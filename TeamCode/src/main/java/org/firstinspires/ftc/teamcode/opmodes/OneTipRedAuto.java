@@ -63,14 +63,13 @@ public class OneTipRedAuto extends LinearOpMode
 
         robot.shooter.reqAim(true); // without this the shooter stays in TEST and never reads READY
 
-        //shoot(test, false); // fire preloads
-        //robot.intake.intake();
-        robot.intake.intake();
+        shoot(test, false); // fire preloads
+        /*robot.intake.intake();
         follow(toGardenNew);
         robot.intake.stop();
         robot.intake.feed();
         follow(toShootPosAfterTip);
-        shoot(test, false); // already at the shoot spot; `park` is the old y-offset path and leaves the field on red
+        shoot(test, false); // already at the shoot spot; `park` is the old y-offset path and leaves the field on red */
         follow(toFinalPark);
 
         //robot.intake.feed();

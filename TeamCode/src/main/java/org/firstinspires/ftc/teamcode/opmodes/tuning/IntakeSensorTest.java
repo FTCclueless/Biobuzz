@@ -24,7 +24,7 @@ public class IntakeSensorTest extends LinearOpMode {
             telemetry.addData(s + " sensor", "%s%s", intake.getSensorKind(s),
                     intake.hasColorSensor(s) ? " (color)" : "");
         }
-        telemetry.addLine("A intake   B stop   X eject   Y feed   dpad up: pollen retrieval");
+        telemetry.addLine("A intake   B stop   X eject   Y feed   dpad up: toggle flower while intaking");
         telemetry.addLine("bumpers: ball count -1 / +1");
         telemetry.update();
 
@@ -37,7 +37,7 @@ public class IntakeSensorTest extends LinearOpMode {
             if (gamepad1.b) intake.stop();
             if (gamepad1.x) intake.eject();
             if (gamepad1.y) intake.feed();
-            if (gamepad1.dpad_up && !lastUp) intake.startPollenRetrieval();
+            if (gamepad1.dpad_up && !lastUp) intake.toggleFlower();
             /*if (gamepad1.left_bumper && !lastLB) intake.setBallCount(intake.getBallCount() - 1);
             if (gamepad1.right_bumper && !lastRB) intake.setBallCount(intake.getBallCount() + 1);*/
             lastLB = gamepad1.left_bumper;
@@ -58,7 +58,7 @@ public class IntakeSensorTest extends LinearOpMode {
                         intake.getSensorDistanceCm(s), intake.getBallColor(s));
             }
             telemetry.addData("PRESENT_CM", "%.2f", Intake.PRESENT_CM);
-            telemetry.addData("flower angle (rad)", "%.2f", intake.getFlowerAngle());
+            telemetry.addData("flower target", intake.isFlowerDown() ? "down" : "up");
             telemetry.addData("alliance", Globals.isRed ? "RED (rejects BLUE nectar)"
                     : "BLUE (rejects RED nectar)");
             telemetry.update();
