@@ -30,7 +30,7 @@ public class OneTipBlueAuto extends LinearOpMode {
     @Override
     public void runOpMode() {
         Globals.RUNMODE = RunMode.AUTO;
-        BiobuzzField.setSide(BiobuzzField.Side.RED);
+        BiobuzzField.setSide(BiobuzzField.Side.BLUE);
 
         robot = new Robot(hardwareMap);
         robot.setStopChecker(this::isStopRequested);

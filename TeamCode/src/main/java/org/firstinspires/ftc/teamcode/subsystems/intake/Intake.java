@@ -193,7 +193,7 @@ public class Intake {
         }*/
         pivotDown(true);
         intakeMotor.setTargetPower(rollerIntakePower * (reversed ? -1 : 1));
-        transferMotor.setTargetPower(transferIntakePower * (reversed ? -1 : 1));
+        transferMotor.setTargetPower(reversed ? -transferIntakePower : 0); // shooting (FEED) runs the transfer
 
         return reversed ? -1 : 1;
     }

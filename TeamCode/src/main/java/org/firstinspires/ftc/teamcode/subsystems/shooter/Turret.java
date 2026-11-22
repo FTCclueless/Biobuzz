@@ -20,7 +20,7 @@ public class Turret {
     // public static final String ENCODER_PORT = "rightFront";
 
     // Servo position that points the turret straight ahead.
-    public static double ZERO_POSITION = 0.711;
+    public static double ZERO_POSITION = 0.697;
 
     public static double POSITION_PER_RADIAN = SERVO_TYPE.positionPerRadian;
 
@@ -73,7 +73,7 @@ public class Turret {
         Servo[] s = new Servo[SERVO_NAMES.length];
         for (int i = 0; i < s.length; i++) s[i] = robot.hardwareMap.get(Servo.class, SERVO_NAMES[i]);
 
-        servos = new nPriorityServo(s, "turret", SERVO_TYPE, 0, 1, ZERO_POSITION, SERVO_REVERSED, 5, 6);
+        servos = new nPriorityServo(s, "turret", SERVO_TYPE, 0, 0.882, ZERO_POSITION, SERVO_REVERSED, 5, 6);
         robot.hardwareQueue.addDevice(servos);
         // encoder = ENCODER_PORT.isEmpty() ? null : robot.hardwareMap.tryGet(DcMotorEx.class, ENCODER_PORT);
     }
@@ -150,8 +150,8 @@ public class Turret {
     // }
 
     private double servoEstimate() {
-        double servoPos = servos.getCurrentAngle() * SERVO_TYPE.positionPerRadian;
-        return (servoPos - ZERO_POSITION) / POSITION_PER_RADIAN;
+        // getCurrentAngle() is measured from the servo's basePos (= ZERO_POSITION at init), not from position 0.
+        return servoAngleAt(servos.basePos + servos.getCurrentAngle() * SERVO_TYPE.positionPerRadian);
     }
 
     static double servoAngleAt(double position) {

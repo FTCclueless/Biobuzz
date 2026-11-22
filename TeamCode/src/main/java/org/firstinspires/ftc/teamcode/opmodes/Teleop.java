@@ -37,8 +37,12 @@ public class Teleop extends LinearOpMode {
         robot.shooter.setManual(false);
         robot.shooter.setShooterBlocker(true);
 
+        // Alliance and pose carry over from the last auto (nobody can touch the controllers in init).
+        // No auto since the app started: alliance start pose of whatever side was last set.
         BiobuzzField.setSide(Globals.isRed ? BiobuzzField.Side.RED : BiobuzzField.Side.BLUE);
-        robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
+        Pose2d autoEnd = Globals.AUTO_ENDING_POSE;
+        boolean fromAuto = autoEnd.x != 0 || autoEnd.y != 0 || autoEnd.heading != 0;
+        robot.drivetrain.setPoseEstimate(fromAuto ? autoEnd.clone() : BiobuzzField.field().start());
 
         ButtonToggle lb1 = new ButtonToggle();
         ButtonToggle rb1 = new ButtonToggle();
@@ -71,11 +75,8 @@ public class Teleop extends LinearOpMode {
         final double triggerThresh = 0.2;
 
         while (opModeInInit()) {
-            // Alliance: gamepad1 X = blue, B = red. Picks which hive the shooter aims at.
-            if ((gamepad1.x && Globals.isRed) || (gamepad1.b && !Globals.isRed)) {
-                BiobuzzField.setSide(gamepad1.b ? BiobuzzField.Side.RED : BiobuzzField.Side.BLUE);
-            }
-            telemetry.addData("Alliance (gp1 X blue / B red)", Globals.isRed ? "RED" : "BLUE");
+            telemetry.addData("Alliance", Globals.isRed ? "RED" : "BLUE");
+            telemetry.addData("Start pose from", fromAuto ? "last auto" : "alliance start (no auto run)");
             robot.sensors.update();
             robot.drivetrain.update();
             telemetry.addData("Pose", ROBOT_POSITION);
@@ -84,11 +85,11 @@ public class Teleop extends LinearOpMode {
         }
 
         if (isStopRequested()) return;
-        robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
 
         while (!isStopRequested()) {
             if (rb2.isClicked(gamepad2.right_bumper)) {
-                robot.drivetrain.setPoseEstimate(new Pose2d(0, 0, 0));
+                robot.drivetrain.setPoseEstimate(nearestCorner(robot.drivetrain.getPoseEstimate()));
+                gamepad2.rumble(200);
             }
             robot.drivetrain.drive(gamepad1);
 
@@ -238,7 +239,7 @@ public class Teleop extends LinearOpMode {
                 }
             } else {
 
-                if (gamepad2.right_bumper) {
+                if (gamepad2.right_trigger > triggerThresh) { // was RB, which is now the corner reset
                     Shooter.forceUpdateVelBool = true;
                     Shooter.forceUpdateVel = 580;
                 } else if (gamepad2.left_bumper) {
@@ -315,5 +316,14 @@ public class Teleop extends LinearOpMode {
             Globals.AUTO_ENDING_POSE = Globals.ROBOT_POSITION.clone();
             return true;
         });
+    }
+
+    /** Robot squared into the nearest field corner: centre half a robot in from both walls, heading kept. */
+    static Pose2d nearestCorner(Pose2d p) {
+        // Along x the robot spans its length when it faces +-x, its width when it faces +-y.
+        boolean facingX = Math.abs(Math.cos(p.heading)) >= Math.abs(Math.sin(p.heading));
+        double halfX = (facingX ? Globals.ROBOT_LENGTH : Globals.ROBOT_WIDTH) / 2;
+        double halfY = (facingX ? Globals.ROBOT_WIDTH : Globals.ROBOT_LENGTH) / 2;
+        return new Pose2d(Math.copySign(72 - halfX, p.x), Math.copySign(72 - halfY, p.y), p.heading);
     }
 }
